@@ -33,51 +33,63 @@ const COLUMNS = {
   COMMENTS: 10        // Column J - Comments
 };
 
-// Map tab names to sheet GIDs (found in your sheet URL after #gid=)
-// Update these to match your actual sheet tabs
-const SHEET_TABS = {
-  '2026-01-25': 'Sun Jan 25, 2026',
-  '2026-01-26': 'Mon Jan 26, 2026',
-  '2026-01-27': 'Tues Jan 27, 2026',
-  '2026-01-28': 'Wed Jan 28, 2026',
-  '2026-01-29': 'Thurs Jan 29, 2026',
-  '2026-01-30': 'Fri Jan.30, 2026'
-};
+// The script auto-detects date tabs based on naming patterns.
+// Tabs that start with a day name (Mon, Tue, Wed, etc.) are included.
+// Others (Form Responses, Template, etc.) are ignored.
+//
+// Examples of tabs that WILL be detected:
+//   "Mon Jan 26, 2026"
+//   "Tues Jan 27, 2026" 
+//   "Fri Jan.30, 2026"
+//   "Saturday January 25"
+//
+// Examples of tabs that will be IGNORED:
+//   "Form Responses"
+//   "Template"
+//   "SC Snow Angel Contact Info"
+//   "Jan 26 Snow Completed/Cancelled Rides" (contains "Completed" or "Cancelled")
+
+const DAY_PATTERNS = /^(sun|mon|tue|wed|thu|fri|sat)/i;
+const EXCLUDE_PATTERNS = /(form response|template|contact|completed|cancelled|driver)/i;
 
 /**
  * Handles GET requests - Returns all rides from the sheet (REAL-TIME!)
+ * Also returns list of available date tabs for the app's dropdown
  */
 function doGet(e) {
   try {
-    // Get the requested date, default to today's tab
-    const dateParam = e.parameter.date || getTodayKey();
-    const tabName = SHEET_TABS[dateParam];
-    
-    if (!tabName) {
-      return createResponse({ 
-        success: false, 
-        error: 'Unknown date',
-        availableDates: Object.keys(SHEET_TABS)
-      });
-    }
-    
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName(tabName);
+    const availableTabs = getDateTabs(spreadsheet);
     
-    if (!sheet) {
+    // If no tab specified, use the most recent one
+    const requestedTab = e.parameter.tab;
+    let targetTab;
+    
+    if (requestedTab) {
+      // Find the requested tab
+      targetTab = availableTabs.find(t => t.name === requestedTab);
+    }
+    
+    if (!targetTab && availableTabs.length > 0) {
+      // Default to the most recent tab (last in the sorted list)
+      targetTab = availableTabs[availableTabs.length - 1];
+    }
+    
+    if (!targetTab) {
       return createResponse({ 
         success: false, 
-        error: `Tab "${tabName}" not found`,
-        availableTabs: spreadsheet.getSheets().map(s => s.getName())
+        error: 'No date tabs found. Make sure tab names start with a day (e.g., "Mon Jan 26, 2026")',
+        allTabs: spreadsheet.getSheets().map(s => s.getName())
       });
     }
     
+    const sheet = spreadsheet.getSheetByName(targetTab.name);
     const rides = getRidesFromSheet(sheet);
     
     return createResponse({ 
       success: true, 
-      date: dateParam,
-      tab: tabName,
+      tab: targetTab.name,
+      availableTabs: availableTabs,
       rides: rides,
       timestamp: new Date().toISOString()
     });
@@ -89,26 +101,89 @@ function doGet(e) {
 }
 
 /**
+ * Get all tabs that look like date/day tabs
+ */
+function getDateTabs(spreadsheet) {
+  const sheets = spreadsheet.getSheets();
+  const dateTabs = [];
+  
+  for (const sheet of sheets) {
+    const name = sheet.getName();
+    
+    // Check if it starts with a day name and doesn't match exclusion patterns
+    if (DAY_PATTERNS.test(name) && !EXCLUDE_PATTERNS.test(name)) {
+      // Try to parse a date from the tab name
+      const dateInfo = parseDateFromTabName(name);
+      dateTabs.push({
+        name: name,
+        sortKey: dateInfo.sortKey,
+        displayDate: dateInfo.display
+      });
+    }
+  }
+  
+  // Sort by date (oldest first, so most recent is last)
+  dateTabs.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  
+  return dateTabs;
+}
+
+/**
+ * Parse date info from tab name like "Mon Jan 26, 2026" or "Fri Jan.30, 2026"
+ */
+function parseDateFromTabName(tabName) {
+  // Try to extract month, day, year
+  const months = {
+    'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+    'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+    'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+  };
+  
+  const monthMatch = tabName.toLowerCase().match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/);
+  const dayMatch = tabName.match(/(\d{1,2})/);
+  const yearMatch = tabName.match(/(20\d{2})/);
+  
+  if (monthMatch && dayMatch) {
+    const month = months[monthMatch[1]];
+    const day = dayMatch[1].padStart(2, '0');
+    const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+    
+    return {
+      sortKey: `${year}-${month}-${day}`,
+      display: `${monthMatch[1].charAt(0).toUpperCase() + monthMatch[1].slice(1)} ${parseInt(day)}, ${year}`
+    };
+  }
+  
+  // Fallback - just use the tab name for sorting
+  return {
+    sortKey: tabName,
+    display: tabName
+  };
+}
+
+/**
  * Handles POST requests - Updates a ride in the sheet
  */
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
-    const { rideId, updates, date } = data;
-    
-    // Get the correct sheet tab
-    const dateKey = date || getTodayKey();
-    const tabName = SHEET_TABS[dateKey];
-    
-    if (!tabName) {
-      return createResponse({ success: false, error: 'Unknown date' });
-    }
+    const { rideId, updates, tab } = data;
     
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName(tabName);
+    
+    // Get the specified tab or default to most recent
+    let sheet;
+    if (tab) {
+      sheet = spreadsheet.getSheetByName(tab);
+    } else {
+      const availableTabs = getDateTabs(spreadsheet);
+      if (availableTabs.length > 0) {
+        sheet = spreadsheet.getSheetByName(availableTabs[availableTabs.length - 1].name);
+      }
+    }
     
     if (!sheet) {
-      return createResponse({ success: false, error: `Tab "${tabName}" not found` });
+      return createResponse({ success: false, error: 'Tab not found' });
     }
     
     // Row calculation: Row 1 is headers, so ride ID 1 = row 2
@@ -146,15 +221,18 @@ function doPost(e) {
     }
     
     // Log the update
-    console.log(`Updated ride ${rideId} on ${tabName}: ${JSON.stringify(updates)}`);
+    console.log(`Updated ride ${rideId} on ${sheet.getName()}: ${JSON.stringify(updates)}`);
     
     // Return the updated rides list so the app can refresh immediately
     const rides = getRidesFromSheet(sheet);
+    const availableTabs = getDateTabs(spreadsheet);
     
     return createResponse({ 
       success: true, 
       rideId, 
       updates,
+      tab: sheet.getName(),
+      availableTabs: availableTabs,
       rides: rides,
       timestamp: new Date().toISOString()
     });
@@ -228,17 +306,6 @@ function formatTime(timeValue) {
   }
   
   return timeValue.toString();
-}
-
-/**
- * Get today's date key
- */
-function getTodayKey() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const day = now.getDate().toString().padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 /**
