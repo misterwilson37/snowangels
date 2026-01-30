@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1877F2">
-    <title>Snow Angels Dispatch 1.06</title>
+    <title>Snow Angels Dispatch 1.07</title>
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -218,7 +218,8 @@
             gap: 10px;
         }
 
-        .driver-login input {
+        .driver-login input,
+        .driver-login select {
             flex: 1;
             padding: 12px 14px;
             border: 2px solid var(--gray-200);
@@ -226,9 +227,11 @@
             font-family: inherit;
             font-size: 15px;
             transition: border-color 0.2s ease;
+            background: var(--white);
         }
 
-        .driver-login input:focus {
+        .driver-login input:focus,
+        .driver-login select:focus {
             outline: none;
             border-color: var(--blue-primary);
         }
@@ -845,6 +848,10 @@
             opacity: 0;
             transition: all 0.3s ease;
             z-index: 1000;
+            max-width: 90%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .toast.show {
@@ -858,6 +865,22 @@
 
         .toast.error {
             background: var(--status-goa);
+        }
+
+        .toast-dismiss {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .toast-dismiss:hover {
+            background: rgba(255,255,255,0.3);
         }
 
         /* Connection Status */
@@ -1094,9 +1117,11 @@
         <!-- Driver View -->
         <div class="driver-view active" id="driver-view">
             <div class="driver-login" id="driver-login">
-                <label>Enter your name to claim rides</label>
+                <label>Select your name to claim rides</label>
                 <div class="driver-login-row">
-                    <input type="text" id="driver-name-input" placeholder="Your Name" autocomplete="name">
+                    <select id="driver-name-input">
+                        <option value="">Loading drivers...</option>
+                    </select>
                     <button onclick="loginDriver()">Start</button>
                 </div>
             </div>
@@ -1136,7 +1161,7 @@
     </main>
 
     <footer class="app-footer">
-        <span>App v<span id="app-version">1.06</span></span>
+        <span>App v<span id="app-version">1.07</span></span>
         <span id="script-version-display"></span>
     </footer>
 
@@ -1216,6 +1241,7 @@
         // ============================================================
         let currentTab = ''; // Will be set from API response
         let availableTabs = []; // Populated from API
+        let validDrivers = []; // Populated from API
         let connectionFailed = false;
         
         async function fetchRides() {
@@ -1250,6 +1276,12 @@
                     if (!currentTab && data.tab) {
                         currentTab = data.tab;
                         updateDateDropdown();
+                    }
+                    
+                    // Update drivers dropdown
+                    if (data.drivers && data.drivers.length > 0) {
+                        validDrivers = data.drivers;
+                        updateDriverDropdown();
                     }
                     
                     // Display script version
@@ -1290,6 +1322,26 @@
             select.innerHTML = availableTabs.map(tab => 
                 `<option value="${escapeHtml(tab.name)}" ${tab.name === currentTab ? 'selected' : ''}>${escapeHtml(tab.name)}</option>`
             ).join('');
+        }
+        
+        function updateDriverDropdown() {
+            const select = document.getElementById('driver-name-input');
+            if (!select) return;
+            
+            if (validDrivers.length === 0) {
+                // Fall back to text input if no drivers list
+                select.outerHTML = '<input type="text" id="driver-name-input" placeholder="Your Name" autocomplete="name">';
+                return;
+            }
+            
+            // Build options, pre-selecting current driver if they exist
+            let options = '<option value="">-- Select your name --</option>';
+            validDrivers.forEach(driver => {
+                const selected = driver === currentDriver ? 'selected' : '';
+                options += `<option value="${escapeHtml(driver)}" ${selected}>${escapeHtml(driver)}</option>`;
+            });
+            
+            select.innerHTML = options;
         }
         
         function updateScriptVersionDisplay(scriptVersion) {
@@ -1680,7 +1732,7 @@
             const input = document.getElementById('driver-name-input');
             const name = input.value.trim();
             if (!name) {
-                showToast('Please enter your name', 'error');
+                showToast('Please select your name', 'error');
                 return;
             }
             currentDriver = name;
@@ -1696,6 +1748,7 @@
             document.getElementById('driver-login').style.display = 'block';
             document.getElementById('driver-status').style.display = 'none';
             document.getElementById('my-rides-section').style.display = 'none';
+            updateDriverDropdown(); // Reset dropdown
             renderAll();
         }
 
@@ -1748,13 +1801,37 @@
             return div.innerHTML;
         }
 
+        let toastTimeout = null;
+        
         function showToast(message, type = 'info') {
             const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast ${type} show`;
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
+            
+            // Clear any existing timeout
+            if (toastTimeout) {
+                clearTimeout(toastTimeout);
+                toastTimeout = null;
+            }
+            
+            // For errors, add a dismiss button and don't auto-hide
+            if (type === 'error') {
+                toast.innerHTML = `
+                    <span>${escapeHtml(message)}</span>
+                    <button class="toast-dismiss" onclick="dismissToast()">OK</button>
+                `;
+                toast.className = `toast ${type} show`;
+                // Don't auto-hide errors - user must dismiss
+            } else {
+                toast.innerHTML = escapeHtml(message);
+                toast.className = `toast ${type} show`;
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+        }
+        
+        function dismissToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.remove('show');
         }
     </script>
 </body>
