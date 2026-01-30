@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1877F2">
-    <title>Snow Angels Dispatch 1.1</title>
+    <title>Snow Angels Dispatch 1.2</title>
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -990,8 +990,8 @@
             </div>
         </div>
         <div class="view-toggle">
-            <button class="view-btn" data-view="driver" onclick="switchView('driver')">🚗 Driver</button>
-            <button class="view-btn active" data-view="dispatcher" onclick="switchView('dispatcher')">📋 Dispatcher</button>
+            <button class="view-btn active" data-view="driver" onclick="switchView('driver')">🚗 Driver</button>
+            <button class="view-btn" data-view="dispatcher" onclick="switchView('dispatcher')">📋 Dispatcher</button>
         </div>
     </header>
 
@@ -1033,7 +1033,7 @@
 
     <main class="main-content">
         <!-- Dispatcher View -->
-        <div class="dispatcher-view active" id="dispatcher-view">
+        <div class="dispatcher-view" id="dispatcher-view">
             <div class="date-selector">
                 <select id="date-select" onchange="changeDate(this.value)">
                     <option value="">Loading dates...</option>
@@ -1065,7 +1065,7 @@
         </div>
 
         <!-- Driver View -->
-        <div class="driver-view" id="driver-view">
+        <div class="driver-view active" id="driver-view">
             <div class="driver-login" id="driver-login">
                 <label>Enter your name to claim rides</label>
                 <div class="driver-login-row">
@@ -1112,23 +1112,16 @@
 
     <script>
         // ============================================================
-        // CONFIGURATION - Update this ONE URL to connect to your Google Sheet
+        // CONFIGURATION
         // ============================================================
         const CONFIG = {
-            // To connect to your Google Sheet:
-            // 1. Open your Google Sheet
-            // 2. Go to Extensions > Apps Script
-            // 3. Paste the contents of google-apps-script.js
-            // 4. Click Deploy > New deployment > Web app
-            // 5. Set "Who has access" to "Anyone"
-            // 6. Copy the URL and paste it below
+            // Google Apps Script URL - connects to the Snow Angels spreadsheet
+            APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx3iZ00i4r_g_yv61JnJQjdtsX91GTtp0caU1c1lMAJpe63I_oYc9YNhcT_FJb_LNGz/exec',
             
-            APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx3iZ00i4r_g_yv61JnJQjdtsX91GTtp0caU1c1lMAJpe63I_oYc9YNhcT_FJb_LNGz/exec', // e.g., 'https://script.google.com/macros/s/ABC123.../exec'
-            
-            // Refresh interval in milliseconds (0 to disable auto-refresh)
+            // Refresh interval in milliseconds
             REFRESH_INTERVAL: 15000, // 15 seconds for near-real-time updates
             
-            // Use demo data if no script URL is configured
+            // Set to true only for testing without the spreadsheet
             USE_DEMO_DATA: false
         };
 
@@ -1164,7 +1157,7 @@
         let rides = [...DEMO_RIDES];
         let currentFilter = 'all';
         let currentDriver = localStorage.getItem('snowAngelsDriver') || '';
-        let currentView = 'dispatcher';
+        let currentView = 'driver';
 
         // ============================================================
         // INITIALIZATION
