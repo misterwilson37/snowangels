@@ -23,7 +23,7 @@
 // ===========================================
 
 // Version - update this when you deploy a new version
-const SCRIPT_VERSION = '1.09';
+const SCRIPT_VERSION = '1.10';
 
 // Email notifications - set to true to enable, add email addresses to notify
 const EMAIL_CONFIG = {
@@ -507,17 +507,25 @@ function getRidesFromSheet(sheet) {
 }
 
 /**
- * Parse status from the sheet
+ * Parse status from the sheet - normalize to lowercase keys for frontend
  */
 function parseStatus(statusValue, driverValue) {
   if (!statusValue) {
     // If no status but has driver, they've claimed it
     return driverValue ? 'claimed' : 'available';
   }
+  
   const lower = statusValue.toString().toLowerCase().trim();
-  if (lower === 'goa') return 'goa';
+  
+  // Workflow statuses
+  if (lower === 'en route' || lower === 'enroute') return 'enroute';
+  if (lower === 'onsite' || lower === 'on site') return 'onsite';
+  if (lower === 'active') return 'active';
   if (lower === 'completed' || lower === 'done') return 'completed';
-  if (lower === 'cancelled') return 'cancelled';
+  if (lower === 'cancelled' || lower === 'canceled') return 'cancelled';
+  if (lower === 'goa') return 'cancelled';  // Legacy support
+  
+  // Unknown status - if has driver treat as claimed, otherwise available
   return driverValue ? 'claimed' : 'available';
 }
 
