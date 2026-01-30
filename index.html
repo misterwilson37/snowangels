@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1877F2">
-    <title>Snow Angels Dispatch 1.03</title>
+    <title>Snow Angels Dispatch 1.05</title>
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1344,32 +1344,65 @@
             // If Apps Script URL is configured, send update
             if (CONFIG.APPS_SCRIPT_URL && !CONFIG.USE_DEMO_DATA) {
                 try {
-                    const response = await fetch(CONFIG.APPS_SCRIPT_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ rideId, updates, tab: currentTab })
-                    });
-                    const data = await response.json();
+                    showToast('Saving...', 'success');
                     
-                    if (data.success) {
-                        // Use the fresh rides data returned from the server
-                        if (data.rides) {
-                            rides = data.rides;
-                            renderAll();
-                        }
-                        showToast('Updated!', 'success');
-                    } else {
-                        showToast(data.error || 'Update failed', 'error');
-                        // Refresh to get correct state
-                        refreshData();
-                    }
+                    // Use a hidden form + iframe to handle CORS with Google Apps Script
+                    const payload = { rideId, updates, tab: currentTab };
+                    await postToAppsScript(payload);
+                    
+                    // Wait a moment for the write to complete, then refresh
+                    setTimeout(async () => {
+                        await refreshData();
+                        showToast('Saved!', 'success');
+                    }, 1500);
+                    
                 } catch (error) {
                     console.error('Error updating ride:', error);
                     showToast('Update may not have saved', 'error');
+                    refreshData();
                 }
             } else {
                 showToast('Updated (demo mode)', 'success');
             }
+        }
+        
+        // Post to Google Apps Script using a hidden form (avoids CORS issues)
+        function postToAppsScript(data) {
+            return new Promise((resolve) => {
+                // Create a hidden iframe to receive the response
+                const iframeName = 'gas-post-' + Date.now();
+                const iframe = document.createElement('iframe');
+                iframe.name = iframeName;
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+                
+                // Create a hidden form
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = CONFIG.APPS_SCRIPT_URL;
+                form.target = iframeName;
+                form.style.display = 'none';
+                
+                // Add the data as a hidden field
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'payload';
+                input.value = JSON.stringify(data);
+                form.appendChild(input);
+                
+                document.body.appendChild(form);
+                
+                // Clean up after submission
+                iframe.onload = () => {
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                        document.body.removeChild(form);
+                        resolve();
+                    }, 100);
+                };
+                
+                form.submit();
+            });
         }
 
         async function refreshData() {
