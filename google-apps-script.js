@@ -1,7 +1,8 @@
 /**
  * Snow Angels Dispatch - Google Apps Script
  * 
- * This script enables the web app to write updates back to your Google Sheet.
+ * This script provides REAL-TIME read/write access to your Google Sheet.
+ * No "Publish to Web" needed - this serves data directly from the sheet.
  * 
  * SETUP INSTRUCTIONS:
  * 1. Open your Google Sheet
@@ -13,6 +14,8 @@
  * 7. Set "Who has access" to "Anyone"
  * 8. Click Deploy and authorize when prompted
  * 9. Copy the Web app URL and paste it into the app's CONFIG.APPS_SCRIPT_URL
+ * 
+ * That's it! The app will read and write directly to your sheet in real-time.
  */
 
 // Column positions in your sheet (1-indexed)
@@ -30,15 +33,83 @@ const COLUMNS = {
   COMMENTS: 10        // Column J - Comments
 };
 
+// Map tab names to sheet GIDs (found in your sheet URL after #gid=)
+// Update these to match your actual sheet tabs
+const SHEET_TABS = {
+  '2026-01-25': 'Sun Jan 25, 2026',
+  '2026-01-26': 'Mon Jan 26, 2026',
+  '2026-01-27': 'Tues Jan 27, 2026',
+  '2026-01-28': 'Wed Jan 28, 2026',
+  '2026-01-29': 'Thurs Jan 29, 2026',
+  '2026-01-30': 'Fri Jan.30, 2026'
+};
+
 /**
- * Handles POST requests from the web app
+ * Handles GET requests - Returns all rides from the sheet (REAL-TIME!)
+ */
+function doGet(e) {
+  try {
+    // Get the requested date, default to today's tab
+    const dateParam = e.parameter.date || getTodayKey();
+    const tabName = SHEET_TABS[dateParam];
+    
+    if (!tabName) {
+      return createResponse({ 
+        success: false, 
+        error: 'Unknown date',
+        availableDates: Object.keys(SHEET_TABS)
+      });
+    }
+    
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(tabName);
+    
+    if (!sheet) {
+      return createResponse({ 
+        success: false, 
+        error: `Tab "${tabName}" not found`,
+        availableTabs: spreadsheet.getSheets().map(s => s.getName())
+      });
+    }
+    
+    const rides = getRidesFromSheet(sheet);
+    
+    return createResponse({ 
+      success: true, 
+      date: dateParam,
+      tab: tabName,
+      rides: rides,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Error in doGet:', error);
+    return createResponse({ success: false, error: error.toString() });
+  }
+}
+
+/**
+ * Handles POST requests - Updates a ride in the sheet
  */
 function doPost(e) {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const data = JSON.parse(e.postData.contents);
+    const { rideId, updates, date } = data;
     
-    const { rideId, updates } = data;
+    // Get the correct sheet tab
+    const dateKey = date || getTodayKey();
+    const tabName = SHEET_TABS[dateKey];
+    
+    if (!tabName) {
+      return createResponse({ success: false, error: 'Unknown date' });
+    }
+    
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(tabName);
+    
+    if (!sheet) {
+      return createResponse({ success: false, error: `Tab "${tabName}" not found` });
+    }
     
     // Row calculation: Row 1 is headers, so ride ID 1 = row 2
     const row = rideId + 1;
@@ -65,7 +136,7 @@ function doPost(e) {
         case 'cancelled':
           statusValue = 'Cancelled';
           break;
-        // 'available', 'claimed', 'enroute' leave the cell empty or unchanged
+        // 'available', 'claimed', 'enroute' leave the cell empty
       }
       sheet.getRange(row, COLUMNS.STATUS).setValue(statusValue);
     }
@@ -74,10 +145,19 @@ function doPost(e) {
       sheet.getRange(row, COLUMNS.CONFIRMED).setValue(updates.confirmed ? 'Yes' : '');
     }
     
-    // Log the update for debugging
-    console.log(`Updated ride ${rideId}: ${JSON.stringify(updates)}`);
+    // Log the update
+    console.log(`Updated ride ${rideId} on ${tabName}: ${JSON.stringify(updates)}`);
     
-    return createResponse({ success: true, rideId, updates });
+    // Return the updated rides list so the app can refresh immediately
+    const rides = getRidesFromSheet(sheet);
+    
+    return createResponse({ 
+      success: true, 
+      rideId, 
+      updates,
+      rides: rides,
+      timestamp: new Date().toISOString()
+    });
     
   } catch (error) {
     console.error('Error in doPost:', error);
@@ -86,57 +166,86 @@ function doPost(e) {
 }
 
 /**
- * Handles GET requests - can be used to test the script is deployed
+ * Reads all rides from a sheet tab
  */
-function doGet(e) {
-  return createResponse({ 
-    status: 'Snow Angels Dispatch API is running',
-    timestamp: new Date().toISOString()
-  });
+function getRidesFromSheet(sheet) {
+  const data = sheet.getDataRange().getValues();
+  
+  // Skip header row, map data to ride objects
+  const rides = data.slice(1).map((row, index) => {
+    const name = row[COLUMNS.NAME - 1];
+    if (!name || name.toString().trim() === '') return null; // Skip empty rows
+    
+    return {
+      id: index + 1,
+      driver: row[COLUMNS.DRIVER - 1] || '',
+      status: parseStatus(row[COLUMNS.STATUS - 1], row[COLUMNS.DRIVER - 1]),
+      time: formatTime(row[COLUMNS.TIME - 1]),
+      confirmed: (row[COLUMNS.CONFIRMED - 1] || '').toString().toLowerCase() === 'yes',
+      name: name.toString(),
+      phone: row[COLUMNS.PHONE - 1] ? row[COLUMNS.PHONE - 1].toString() : '',
+      pickup: row[COLUMNS.PICKUP - 1] ? row[COLUMNS.PICKUP - 1].toString() : '',
+      dropoff: row[COLUMNS.DROPOFF - 1] ? row[COLUMNS.DROPOFF - 1].toString() : '',
+      type: row[COLUMNS.TYPE - 1] ? row[COLUMNS.TYPE - 1].toString() : '',
+      comments: row[COLUMNS.COMMENTS - 1] ? row[COLUMNS.COMMENTS - 1].toString() : ''
+    };
+  }).filter(r => r !== null);
+  
+  return rides;
 }
 
 /**
- * Helper to create JSON responses
+ * Parse status from the sheet
+ */
+function parseStatus(statusValue, driverValue) {
+  if (!statusValue) {
+    // If no status but has driver, they've claimed it
+    return driverValue ? 'claimed' : 'available';
+  }
+  const lower = statusValue.toString().toLowerCase().trim();
+  if (lower === 'goa') return 'goa';
+  if (lower === 'completed' || lower === 'done') return 'completed';
+  if (lower === 'cancelled') return 'cancelled';
+  return driverValue ? 'claimed' : 'available';
+}
+
+/**
+ * Format time values (handles both string and date objects)
+ */
+function formatTime(timeValue) {
+  if (!timeValue) return '';
+  
+  // If it's already a string like "19:00" or "Anytime", return it
+  if (typeof timeValue === 'string') {
+    return timeValue;
+  }
+  
+  // If it's a Date object (from a time cell), format it
+  if (timeValue instanceof Date) {
+    const hours = timeValue.getHours();
+    const minutes = timeValue.getMinutes();
+    return `${hours}:${minutes.toString().padStart(2, '0')}`;
+  }
+  
+  return timeValue.toString();
+}
+
+/**
+ * Get today's date key
+ */
+function getTodayKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const day = now.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Helper to create JSON responses with CORS headers
  */
 function createResponse(data) {
   return ContentService
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
-
-/**
- * Optional: Function to get all rides (could be used instead of CSV publishing)
- * Uncomment and deploy if you want to use this instead of Publish to Web
- */
-/*
-function getRides() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  
-  const rides = data.slice(1).map((row, index) => ({
-    id: index + 1,
-    driver: row[COLUMNS.DRIVER - 1] || '',
-    status: parseStatus(row[COLUMNS.STATUS - 1]),
-    time: row[COLUMNS.TIME - 1] || '',
-    confirmed: (row[COLUMNS.CONFIRMED - 1] || '').toString().toLowerCase() === 'yes',
-    name: row[COLUMNS.NAME - 1] || '',
-    phone: row[COLUMNS.PHONE - 1] || '',
-    pickup: row[COLUMNS.PICKUP - 1] || '',
-    dropoff: row[COLUMNS.DROPOFF - 1] || '',
-    type: row[COLUMNS.TYPE - 1] || '',
-    comments: row[COLUMNS.COMMENTS - 1] || ''
-  })).filter(r => r.name); // Filter out empty rows
-  
-  return rides;
-}
-
-function parseStatus(value) {
-  if (!value) return 'available';
-  const lower = value.toString().toLowerCase().trim();
-  if (lower === 'goa') return 'goa';
-  if (lower === 'completed' || lower === 'done') return 'completed';
-  if (lower === 'cancelled') return 'cancelled';
-  return 'available';
-}
-*/
