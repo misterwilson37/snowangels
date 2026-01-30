@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1877F2">
-    <title>Snow Angels Dispatch 1.10</title>
+    <title>Snow Angels Dispatch 1.11</title>
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -866,11 +866,16 @@
         }
 
         /* Cancel button below stepper */
-        .cancel-ride-btn {
-            display: block;
-            width: 100%;
+        .ride-bottom-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .cancel-ride-btn,
+        .release-ride-btn {
+            flex: 1;
             padding: 10px;
-            margin-top: 8px;
             background: var(--gray-100);
             border: 1px solid var(--gray-200);
             border-radius: var(--radius-sm);
@@ -886,6 +891,26 @@
             background: #FEE2E2;
             border-color: var(--status-goa);
             color: var(--status-goa);
+        }
+
+        .release-ride-btn:hover {
+            background: var(--blue-light);
+            border-color: var(--blue-primary);
+            color: var(--blue-primary);
+        }
+
+        /* Clickable completed steps */
+        .stepper-step.completed.clickable {
+            cursor: pointer;
+        }
+
+        .stepper-step.completed.clickable:hover .stepper-icon {
+            background: #059669;
+            transform: scale(1.1);
+        }
+
+        .stepper-step.completed.clickable:hover .stepper-label {
+            color: var(--blue-primary);
         }
 
         /* Confirmation Modal */
@@ -1606,7 +1631,7 @@
     </main>
 
     <footer class="app-footer">
-        <span>App v<span id="app-version">1.10</span></span>
+        <span>App v<span id="app-version">1.11</span></span>
         <span id="script-version-display"></span>
     </footer>
 
@@ -1952,8 +1977,17 @@
                     const data = await response.json();
                     
                     if (data.success) {
+                        // Only update from server if our local state doesn't have newer changes
+                        // This prevents flickering when server returns stale data
                         if (data.rides) {
+                            // Merge server data but preserve our optimistic update for this ride
+                            const ourUpdate = rides[index];
                             rides = data.rides;
+                            // Re-apply our update if server returned stale data
+                            const serverIndex = rides.findIndex(r => r.id === rideId);
+                            if (serverIndex !== -1 && ourUpdate) {
+                                rides[serverIndex] = { ...rides[serverIndex], ...updates };
+                            }
                             renderAll();
                         }
                         showToast('Saved!', 'success');
@@ -2129,8 +2163,10 @@
                             let clickHandler = '';
                             
                             if (idx < currentIdx) {
-                                stepClass = 'completed';
+                                // Completed steps - allow clicking to go back
+                                stepClass = 'completed clickable';
                                 icon = '✓';
+                                clickHandler = `onclick="advanceStatus(${ride.id}, '${s}')"`;
                             } else if (idx === currentIdx) {
                                 stepClass = 'current';
                             } else if (idx === currentIdx + 1) {
@@ -2159,12 +2195,14 @@
                             `;
                         }).join('')}
                     </div>
-                    <button class="cancel-ride-btn" onclick="showConfirmModal(${ride.id}, 'cancelled')">
-                        ✕ Cancel This Ride
-                    </button>
-                    <button class="action-btn secondary small" style="margin-top: 8px; width: 100%;" onclick="unclaimRide(${ride.id})">
-                        Release Ride (Unclaim)
-                    </button>
+                    <div class="ride-bottom-actions">
+                        <button class="cancel-ride-btn" onclick="showConfirmModal(${ride.id}, 'cancelled')">
+                            ✕ Cancel
+                        </button>
+                        <button class="release-ride-btn" onclick="unclaimRide(${ride.id})">
+                            ↩ Release
+                        </button>
+                    </div>
                 `;
             }
             
