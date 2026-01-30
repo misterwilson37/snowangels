@@ -28,15 +28,20 @@ This is the only setup needed - no "Publish to Web" required!
 2. Go to **Extensions → Apps Script**
 3. Delete any existing code
 4. Copy/paste everything from `google-apps-script.js`
-5. **Important**: Update the `SHEET_TABS` section (around line 30) to match your actual tab names:
+5. That's it! The script auto-detects your date tabs.
 
-```javascript
-const SHEET_TABS = {
-  '2026-01-25': 'Sun Jan 25, 2026',    // 'YYYY-MM-DD': 'Exact Tab Name'
-  '2026-01-26': 'Mon Jan 26, 2026',
-  // Add more dates as needed
-};
-```
+**How tab detection works:**
+- Tabs that start with a day name (Mon, Tue, Wed, Thu, Fri, Sat, Sun) are included
+- Tabs like "Form Responses", "Template", "Contact Info" are automatically ignored
+- The app's dropdown is populated automatically - no configuration needed!
+
+**Your existing tab names will work perfectly:**
+- ✅ "Mon Jan 26, 2026"
+- ✅ "Tues Jan 27, 2026"  
+- ✅ "Fri Jan.30, 2026"
+- ❌ "Form Responses" (ignored)
+- ❌ "Template" (ignored)
+- ❌ "SC Snow Angel Contact Info" (ignored)
 
 ### Step 2: Deploy the Script
 
@@ -100,7 +105,7 @@ This matches the format you're already using!
 
 - **Colors**: Edit the CSS variables at the top of the `<style>` section
 - **Refresh Rate**: Change `REFRESH_INTERVAL` in CONFIG (in milliseconds)
-- **Add more dates**: Update the `SHEET_TABS` in the Apps Script and the date dropdown in the HTML
+- **Tab Detection**: Modify `DAY_PATTERNS` and `EXCLUDE_PATTERNS` in the Apps Script if you use different naming conventions
 
 ## Troubleshooting
 
@@ -108,9 +113,13 @@ This matches the format you're already using!
 - Make sure `USE_DEMO_DATA` is set to `false`
 - Check that your Apps Script URL is correct
 
-**Rides not updating?**
+**Tabs not showing up?**
+- Make sure tab names start with a day (Mon, Tue, Wed, etc.)
 - Check the Apps Script execution log: Extensions → Apps Script → Executions
-- Make sure tab names in `SHEET_TABS` exactly match your sheet (including spaces and punctuation)
+
+**Rides not updating?**
+- Check the Apps Script execution log for errors
+- Make sure the column order matches (Driver, Status, Time, Confirmed, Name, Phone, Pickup, Dropoff, Type, Comments)
 
 **Permission errors?**
 - Re-deploy the Apps Script and re-authorize
