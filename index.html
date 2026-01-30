@@ -1117,27 +1117,23 @@
 
     <script>
         // ============================================================
-        // CONFIGURATION - Update these to connect to your Google Sheet
+        // CONFIGURATION - Update this ONE URL to connect to your Google Sheet
         // ============================================================
         const CONFIG = {
             // To connect to your Google Sheet:
             // 1. Open your Google Sheet
-            // 2. Go to File > Share > Publish to web
-            // 3. Select the tab you want (e.g., "Mon Jan 26, 2026")
-            // 4. Choose "Comma-separated values (.csv)"
-            // 5. Click Publish and copy the URL
-            // 6. Paste it below
+            // 2. Go to Extensions > Apps Script
+            // 3. Paste the contents of google-apps-script.js
+            // 4. Click Deploy > New deployment > Web app
+            // 5. Set "Who has access" to "Anyone"
+            // 6. Copy the URL and paste it below
             
-            SHEET_CSV_URL: '', // e.g., 'https://docs.google.com/spreadsheets/d/e/2PACX.../pub?gid=0&single=true&output=csv'
-            
-            // For writing data back to the sheet, you'll need a Google Apps Script
-            // See the README for setup instructions
-            APPS_SCRIPT_URL: '', // e.g., 'https://script.google.com/macros/s/.../exec'
+            APPS_SCRIPT_URL: '', // e.g., 'https://script.google.com/macros/s/ABC123.../exec'
             
             // Refresh interval in milliseconds (0 to disable auto-refresh)
-            REFRESH_INTERVAL: 30000, // 30 seconds
+            REFRESH_INTERVAL: 15000, // 15 seconds for near-real-time updates
             
-            // Use demo data if no sheet is configured
+            // Use demo data if no script URL is configured
             USE_DEMO_DATA: true
         };
 
@@ -1197,20 +1193,39 @@
         // ============================================================
         // DATA FUNCTIONS
         // ============================================================
+        let currentDate = '2026-01-30'; // Default to today
+        
         async function fetchRides() {
-            if (!CONFIG.SHEET_CSV_URL || CONFIG.USE_DEMO_DATA) {
+            if (!CONFIG.APPS_SCRIPT_URL || CONFIG.USE_DEMO_DATA) {
                 return DEMO_RIDES;
             }
             
             try {
-                const response = await fetch(CONFIG.SHEET_CSV_URL);
-                const csv = await response.text();
-                return parseCSV(csv);
+                const url = `${CONFIG.APPS_SCRIPT_URL}?date=${currentDate}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success && data.rides) {
+                    // Update connection status
+                    updateConnectionStatus(true, `Live - ${data.rides.length} rides`);
+                    return data.rides;
+                } else {
+                    console.error('API error:', data.error);
+                    showToast(data.error || 'Failed to load rides', 'error');
+                    return rides; // Return cached data
+                }
             } catch (error) {
                 console.error('Error fetching rides:', error);
-                showToast('Failed to load rides', 'error');
+                updateConnectionStatus(false, 'Connection error');
+                showToast('Failed to connect - showing cached data', 'error');
                 return rides; // Return cached data
             }
+        }
+
+        function updateConnectionStatus(connected, message) {
+            const el = document.getElementById('connection-status');
+            el.className = `connection-status ${connected ? 'connected' : ''}`;
+            el.querySelector('span:nth-child(2)').textContent = message;
         }
 
         function parseCSV(csv) {
@@ -1274,7 +1289,7 @@
         }
 
         async function updateRide(rideId, updates) {
-            // Update local state
+            // Update local state immediately for responsive UI
             const index = rides.findIndex(r => r.id === rideId);
             if (index !== -1) {
                 rides[index] = { ...rides[index], ...updates };
@@ -1282,18 +1297,30 @@
             }
 
             // If Apps Script URL is configured, send update
-            if (CONFIG.APPS_SCRIPT_URL) {
+            if (CONFIG.APPS_SCRIPT_URL && !CONFIG.USE_DEMO_DATA) {
                 try {
-                    await fetch(CONFIG.APPS_SCRIPT_URL, {
+                    const response = await fetch(CONFIG.APPS_SCRIPT_URL, {
                         method: 'POST',
-                        mode: 'no-cors',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ rideId, updates })
+                        body: JSON.stringify({ rideId, updates, date: currentDate })
                     });
-                    showToast('Updated successfully', 'success');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Use the fresh rides data returned from the server
+                        if (data.rides) {
+                            rides = data.rides;
+                            renderAll();
+                        }
+                        showToast('Updated!', 'success');
+                    } else {
+                        showToast(data.error || 'Update failed', 'error');
+                        // Refresh to get correct state
+                        refreshData();
+                    }
                 } catch (error) {
                     console.error('Error updating ride:', error);
-                    showToast('Update saved locally', 'warning');
+                    showToast('Update may not have saved', 'error');
                 }
             } else {
                 showToast('Updated (demo mode)', 'success');
@@ -1591,9 +1618,8 @@
         }
 
         function changeDate(date) {
-            // In real implementation, this would fetch data for the selected date
-            showToast(`Loading rides for ${date}...`, 'success');
-            // For demo, we just refresh
+            currentDate = date;
+            showToast(`Loading ${date}...`, 'success');
             refreshData();
         }
 
