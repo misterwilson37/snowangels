@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1877F2">
-    <title>Snow Angels Dispatch 1.13</title>
+    <title>Snow Angels Dispatch 1.14</title>
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1556,9 +1556,26 @@
             z-index: 50;
         }
 
-        .app-footer .version-mismatch {
-            color: var(--status-goa);
-            font-weight: 600;
+        /* Update Available Banner */
+        .update-banner {
+            position: fixed;
+            bottom: 36px;
+            left: 0;
+            right: 0;
+            background: var(--blue-primary);
+            color: white;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+            cursor: pointer;
+            z-index: 51;
+            animation: pulse-bg 2s infinite;
+        }
+
+        @keyframes pulse-bg {
+            0%, 100% { background: var(--blue-primary); }
+            50% { background: #1565C0; }
         }
 
         /* Print Styles */
@@ -1711,9 +1728,13 @@
         </div>
     </main>
 
+    <div class="update-banner" id="update-available" style="display: none;" onclick="location.reload()">
+        🔄 New version available - tap to refresh
+    </div>
+
     <footer class="app-footer">
-        <span>App v<span id="app-version">1.13</span></span>
-        <span id="script-version-display"></span>
+        <span>App v<span id="app-version">1.14</span></span>
+        <span id="last-refresh-time">Updated --:--</span>
     </footer>
 
     <div class="toast" id="toast"></div>
@@ -1861,9 +1882,13 @@
                         updateDriverDropdown();
                     }
                     
-                    // Display script version
-                    if (data.scriptVersion) {
-                        updateScriptVersionDisplay(data.scriptVersion);
+                    // Update last refresh time
+                    lastRefreshTime = new Date();
+                    updateLastRefreshDisplay();
+                    
+                    // Check for app updates
+                    if (data.latestAppVersion) {
+                        checkForAppUpdate(data.latestAppVersion);
                     }
                     
                     // Update connection status
@@ -1921,17 +1946,33 @@
             select.innerHTML = options;
         }
         
-        function updateScriptVersionDisplay(scriptVersion) {
-            const el = document.getElementById('script-version-display');
-            const appVersion = document.getElementById('app-version').textContent;
+        let lastRefreshTime = null;
+        let latestAppVersion = null;
+        
+        function updateLastRefreshDisplay() {
+            const el = document.getElementById('last-refresh-time');
+            if (lastRefreshTime) {
+                const time = lastRefreshTime.toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                el.textContent = `Updated ${time}`;
+            }
+        }
+        
+        function checkForAppUpdate(serverAppVersion) {
+            if (!serverAppVersion) return;
             
-            if (scriptVersion === appVersion) {
-                el.textContent = `| Script v${scriptVersion} ✓`;
-                el.className = '';
+            latestAppVersion = serverAppVersion;
+            const currentVersion = document.getElementById('app-version').textContent;
+            const updateBanner = document.getElementById('update-available');
+            
+            if (serverAppVersion !== currentVersion) {
+                updateBanner.style.display = 'block';
+                updateBanner.textContent = `🔄 New version ${serverAppVersion} available - tap to refresh`;
             } else {
-                el.textContent = `| Script v${scriptVersion} ⚠️ MISMATCH`;
-                el.className = 'version-mismatch';
-                console.warn(`Version mismatch: App is v${appVersion}, Script is v${scriptVersion}`);
+                updateBanner.style.display = 'none';
             }
         }
 
@@ -2127,8 +2168,29 @@
             const tbody = document.getElementById('dispatcher-table-body');
             const filteredRides = filterRidesList(rides);
             
+            // Build driver options HTML
+            const driverOptions = validDrivers.length > 0
+                ? `<option value="">-- Select --</option>` + validDrivers.map(d => 
+                    `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`
+                  ).join('')
+                : null;
+            
             tbody.innerHTML = filteredRides.map(ride => {
                 const status = getRideStatus(ride);
+                
+                // Driver cell - dropdown if we have drivers, text input as fallback
+                const driverCell = driverOptions
+                    ? `<select onchange="updateRide(${ride.id}, { driver: this.value })">
+                         ${driverOptions.replace(
+                           `value="${escapeHtml(ride.driver)}"`, 
+                           `value="${escapeHtml(ride.driver)}" selected`
+                         )}
+                       </select>`
+                    : `<input type="text" 
+                             value="${escapeHtml(ride.driver)}" 
+                             placeholder="Assign driver..."
+                             onchange="updateRide(${ride.id}, { driver: this.value })">`;
+                
                 return `
                     <tr data-ride-id="${ride.id}">
                         <td class="time-cell">${ride.time}</td>
@@ -2139,19 +2201,14 @@
                         <td class="address-cell">${escapeHtml(ride.pickup)}</td>
                         <td class="address-cell">${escapeHtml(ride.dropoff)}</td>
                         <td>${ride.type}</td>
-                        <td class="driver-cell">
-                            <input type="text" 
-                                   value="${escapeHtml(ride.driver)}" 
-                                   placeholder="Assign driver..."
-                                   onchange="updateRide(${ride.id}, { driver: this.value })">
-                        </td>
+                        <td class="driver-cell">${driverCell}</td>
                         <td class="confirmed-cell">
                             <input type="checkbox" 
                                    ${ride.confirmed ? 'checked' : ''} 
                                    onchange="updateRide(${ride.id}, { confirmed: this.checked })">
                         </td>
                         <td class="status-cell">
-                            <select onchange="updateRide(${ride.id}, { status: this.value })">
+                            <select onchange="handleStatusChange(${ride.id}, this.value)">
                                 <option value="available" ${status === 'available' ? 'selected' : ''}>Available</option>
                                 <option value="enroute" ${status === 'enroute' ? 'selected' : ''}>En Route</option>
                                 <option value="onsite" ${status === 'onsite' ? 'selected' : ''}>On Site</option>
@@ -2163,6 +2220,15 @@
                     </tr>
                 `;
             }).join('');
+        }
+        
+        // Handle status change - clear driver if setting to available
+        function handleStatusChange(rideId, newStatus) {
+            if (newStatus === 'available') {
+                updateRide(rideId, { status: newStatus, driver: '' });
+            } else {
+                updateRide(rideId, { status: newStatus });
+            }
         }
 
         function renderDriverView() {
