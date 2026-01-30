@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1877F2">
+    <title>Snow Angels Dispatch</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --blue-primary: #1877F2;
+            --blue-dark: #1565C0;
+            --blue-darker: #0D47A1;
+            --blue-light: #E7F3FF;
+            --blue-pale: #F5F9FF;
+            --white: #FFFFFF;
+            --gray-50: #F8FAFC;
+            --gray-100: #F1F5F9;
+            --gray-200: #E2E8F0;
+            --gray-300: #CBD5E1;
+            --gray-400: #94A3B8;
+            --gray-500: #64748B;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1E293B;
+            --status-available: #1877F2;
+            --status-claimed: #F59E0B;
+            --status-enroute: #10B981;
+            --status-completed: #6B7280;
+            --status-goa: #EF4444;
+            --status-cancelled: #9CA3AF;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--blue-primary) 0%, var(--blue-dark) 100%);
+            color: var(--white);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--white);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-subtitle {
+            font-size: 11px;
+            opacity: 0.85;
+            font-weight: 500;
+        }
+
+        .date-display {
+            font-size: 13px;
+            opacity: 0.9;
+            text-align: right;
+        }
+
+        /* View Toggle */
+        .view-toggle {
+            display: flex;
+            background: rgba(255,255,255,0.15);
+            border-radius: var(--radius-sm);
+            padding: 4px;
+            gap: 4px;
+        }
+
+        .view-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.8);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .view-btn.active {
+            background: var(--white);
+            color: var(--blue-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .view-btn:not(.active):hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--white);
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-200);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .stat-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--gray-100);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .stat-chip:hover {
+            background: var(--gray-200);
+        }
+
+        .stat-chip.active {
+            border-color: var(--blue-primary);
+            background: var(--blue-light);
+        }
+
+        .stat-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .stat-dot.available { background: var(--status-available); }
+        .stat-dot.claimed { background: var(--status-claimed); }
+        .stat-dot.enroute { background: var(--status-enroute); }
+        .stat-dot.completed { background: var(--status-completed); }
+        .stat-dot.goa { background: var(--status-goa); }
+
+        /* Main Content */
+        .main-content {
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+
+        /* Driver Login Panel */
+        .driver-login {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+        }
+
+        .driver-login label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-600);
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .driver-login-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .driver-login input {
+            flex: 1;
+            padding: 12px 14px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 15px;
+            transition: border-color 0.2s ease;
+        }
+
+        .driver-login input:focus {
+            outline: none;
+            border-color: var(--blue-primary);
+        }
+
+        .driver-login button {
+            padding: 12px 20px;
+            background: var(--blue-primary);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .driver-login button:hover {
+            background: var(--blue-dark);
+        }
+
+        .driver-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .driver-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .driver-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--blue-light);
+            color: var(--blue-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .driver-name {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .driver-rides {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        .logout-btn {
+            padding: 8px 14px;
+            background: var(--gray-100);
+            color: var(--gray-600);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 0 4px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .section-count {
+            font-size: 13px;
+            color: var(--gray-500);
+            font-weight: 500;
+        }
+
+        /* Ride Cards */
+        .ride-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ride-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+        }
+
+        .ride-card.status-available::before { background: var(--status-available); }
+        .ride-card.status-claimed::before { background: var(--status-claimed); }
+        .ride-card.status-enroute::before { background: var(--status-enroute); }
+        .ride-card.status-completed::before { background: var(--status-completed); }
+        .ride-card.status-goa::before { background: var(--status-goa); }
+
+        .ride-card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .ride-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .ride-time {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gray-800);
+            line-height: 1;
+        }
+
+        .ride-time-label {
+            font-size: 11px;
+            color: var(--gray-500);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ride-status {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .ride-status.available {
+            background: var(--blue-light);
+            color: var(--blue-primary);
+        }
+
+        .ride-status.claimed {
+            background: #FEF3C7;
+            color: #B45309;
+        }
+
+        .ride-status.enroute {
+            background: #D1FAE5;
+            color: #047857;
+        }
+
+        .ride-status.completed {
+            background: var(--gray-200);
+            color: var(--gray-600);
+        }
+
+        .ride-status.goa {
+            background: #FEE2E2;
+            color: #B91C1C;
+        }
+
+        .ride-passenger {
+            margin-bottom: 12px;
+        }
+
+        .ride-passenger-name {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 2px;
+        }
+
+        .ride-passenger-phone {
+            font-size: 14px;
+            color: var(--blue-primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .ride-passenger-phone:hover {
+            text-decoration: underline;
+        }
+
+        .ride-route {
+            background: var(--gray-50);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .ride-location {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .ride-location + .ride-location {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed var(--gray-300);
+        }
+
+        .location-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .location-icon.pickup {
+            background: var(--status-enroute);
+            color: var(--white);
+        }
+
+        .location-icon.dropoff {
+            background: var(--status-goa);
+            color: var(--white);
+        }
+
+        .location-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .location-label {
+            font-size: 11px;
+            color: var(--gray-500);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .location-address {
+            font-size: 14px;
+            color: var(--gray-700);
+            line-height: 1.4;
+        }
+
+        .ride-type {
+            display: inline-block;
+            padding: 3px 8px;
+            background: var(--blue-light);
+            color: var(--blue-primary);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .ride-comments {
+            background: #FEF9C3;
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #854D0E;
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        .ride-comments-icon {
+            flex-shrink: 0;
+        }
+
+        .ride-driver {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--gray-100);
+            border-radius: var(--radius-sm);
+            margin-bottom: 12px;
+        }
+
+        .ride-driver-label {
+            font-size: 12px;
+            color: var(--gray-500);
+            font-weight: 500;
+        }
+
+        .ride-driver-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .confirmed-badge {
+            margin-left: auto;
+            padding: 3px 8px;
+            background: var(--status-enroute);
+            color: var(--white);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Action Buttons */
+        .ride-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .action-btn.primary {
+            background: var(--blue-primary);
+            color: var(--white);
+        }
+
+        .action-btn.primary:hover {
+            background: var(--blue-dark);
+        }
+
+        .action-btn.success {
+            background: var(--status-enroute);
+            color: var(--white);
+        }
+
+        .action-btn.success:hover {
+            background: #059669;
+        }
+
+        .action-btn.warning {
+            background: var(--status-claimed);
+            color: var(--white);
+        }
+
+        .action-btn.warning:hover {
+            background: #D97706;
+        }
+
+        .action-btn.danger {
+            background: var(--status-goa);
+            color: var(--white);
+        }
+
+        .action-btn.danger:hover {
+            background: #DC2626;
+        }
+
+        .action-btn.secondary {
+            background: var(--gray-100);
+            color: var(--gray-700);
+        }
+
+        .action-btn.secondary:hover {
+            background: var(--gray-200);
+        }
+
+        .action-btn.small {
+            padding: 8px 12px;
+            font-size: 13px;
+            min-width: auto;
+        }
+
+        /* Dispatcher Table View */
+        .dispatcher-view {
+            display: none;
+        }
+
+        .dispatcher-view.active {
+            display: block;
+        }
+
+        .table-container {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .dispatch-table {
+            width: 100%;
+            min-width: 900px;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .dispatch-table th {
+            background: var(--gray-50);
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray-600);
+            border-bottom: 2px solid var(--gray-200);
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+        }
+
+        .dispatch-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--gray-100);
+            vertical-align: top;
+        }
+
+        .dispatch-table tr:hover {
+            background: var(--blue-pale);
+        }
+
+        .dispatch-table .time-cell {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .dispatch-table .name-cell {
+            font-weight: 600;
+        }
+
+        .dispatch-table .phone-cell a {
+            color: var(--blue-primary);
+            text-decoration: none;
+        }
+
+        .dispatch-table .address-cell {
+            max-width: 200px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .dispatch-table .driver-cell {
+            min-width: 150px;
+        }
+
+        .dispatch-table .driver-cell input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        .dispatch-table .driver-cell input:focus {
+            outline: none;
+            border-color: var(--blue-primary);
+        }
+
+        .dispatch-table .status-cell {
+            min-width: 130px;
+        }
+
+        .dispatch-table .status-cell select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            background: var(--white);
+            cursor: pointer;
+        }
+
+        .dispatch-table .status-cell select:focus {
+            outline: none;
+            border-color: var(--blue-primary);
+        }
+
+        .dispatch-table .confirmed-cell {
+            text-align: center;
+        }
+
+        .dispatch-table .confirmed-cell input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Driver View */
+        .driver-view {
+            display: none;
+        }
+
+        .driver-view.active {
+            display: block;
+        }
+
+        .rides-section {
+            margin-bottom: 24px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray-500);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 15px;
+        }
+
+        /* Quick Actions for Driver */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .quick-action {
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .quick-action.call {
+            background: var(--blue-light);
+            color: var(--blue-primary);
+        }
+
+        .quick-action.call:hover {
+            background: var(--blue-primary);
+            color: var(--white);
+        }
+
+        .quick-action.navigate {
+            background: #D1FAE5;
+            color: #047857;
+        }
+
+        .quick-action.navigate:hover {
+            background: var(--status-enroute);
+            color: var(--white);
+        }
+
+        /* Loading Spinner */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--gray-200);
+            border-top-color: var(--blue-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--gray-800);
+            color: var(--white);
+            padding: 14px 24px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--status-enroute);
+        }
+
+        .toast.error {
+            background: var(--status-goa);
+        }
+
+        /* Connection Status */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #FEF3C7;
+            color: #B45309;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .connection-status.connected {
+            background: #D1FAE5;
+            color: #047857;
+        }
+
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Refresh Button */
+        .refresh-btn {
+            padding: 8px 16px;
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-600);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            background: var(--gray-50);
+            border-color: var(--gray-300);
+        }
+
+        .refresh-btn.spinning svg {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Date Selector for Dispatcher */
+        .date-selector {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .date-selector select {
+            padding: 10px 14px;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            background: var(--white);
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .header {
+                padding: 12px 16px;
+            }
+
+            .logo-text {
+                font-size: 16px;
+            }
+
+            .main-content {
+                padding: 12px;
+            }
+
+            .ride-card {
+                padding: 14px;
+            }
+
+            .ride-time {
+                font-size: 20px;
+            }
+
+            .ride-actions {
+                flex-direction: column;
+            }
+
+            .action-btn {
+                width: 100%;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .header, .stats-bar, .driver-login, .ride-actions, .quick-actions {
+                display: none !important;
+            }
+
+            .ride-card {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ccc;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-top">
+            <div class="logo">
+                <div class="logo-icon">❄️</div>
+                <div>
+                    <div class="logo-text">Snow Angels</div>
+                    <div class="logo-subtitle">Sumner County Dispatch</div>
+                </div>
+            </div>
+            <div class="date-display">
+                <div id="current-date"></div>
+                <div id="current-time"></div>
+            </div>
+        </div>
+        <div class="view-toggle">
+            <button class="view-btn" data-view="driver" onclick="switchView('driver')">🚗 Driver</button>
+            <button class="view-btn active" data-view="dispatcher" onclick="switchView('dispatcher')">📋 Dispatcher</button>
+        </div>
+    </header>
+
+    <div class="connection-status" id="connection-status">
+        <span class="connection-dot"></span>
+        <span>Demo Mode - Connect Google Sheet for live data</span>
+        <button class="refresh-btn" onclick="refreshData()" style="margin-left: auto;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+            Refresh
+        </button>
+    </div>
+
+    <div class="stats-bar">
+        <div class="stat-chip active" data-filter="all" onclick="filterRides('all')">
+            <span>All</span>
+            <span id="count-all">20</span>
+        </div>
+        <div class="stat-chip" data-filter="available" onclick="filterRides('available')">
+            <span class="stat-dot available"></span>
+            <span>Available</span>
+            <span id="count-available">8</span>
+        </div>
+        <div class="stat-chip" data-filter="claimed" onclick="filterRides('claimed')">
+            <span class="stat-dot claimed"></span>
+            <span>Claimed</span>
+            <span id="count-claimed">5</span>
+        </div>
+        <div class="stat-chip" data-filter="completed" onclick="filterRides('completed')">
+            <span class="stat-dot completed"></span>
+            <span>Completed</span>
+            <span id="count-completed">4</span>
+        </div>
+        <div class="stat-chip" data-filter="goa" onclick="filterRides('goa')">
+            <span class="stat-dot goa"></span>
+            <span>GOA</span>
+            <span id="count-goa">3</span>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <!-- Dispatcher View -->
+        <div class="dispatcher-view active" id="dispatcher-view">
+            <div class="date-selector">
+                <select id="date-select" onchange="changeDate(this.value)">
+                    <option value="2026-01-30">Friday, Jan 30, 2026</option>
+                    <option value="2026-01-29">Thursday, Jan 29, 2026</option>
+                    <option value="2026-01-28">Wednesday, Jan 28, 2026</option>
+                    <option value="2026-01-27">Tuesday, Jan 27, 2026</option>
+                    <option value="2026-01-26">Monday, Jan 26, 2026</option>
+                    <option value="2026-01-25">Sunday, Jan 25, 2026</option>
+                </select>
+            </div>
+
+            <div class="table-container">
+                <div class="table-scroll">
+                    <table class="dispatch-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Passenger</th>
+                                <th>Phone</th>
+                                <th>Pickup</th>
+                                <th>Dropoff</th>
+                                <th>Type</th>
+                                <th>Driver</th>
+                                <th>Confirmed</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dispatcher-table-body">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Driver View -->
+        <div class="driver-view" id="driver-view">
+            <div class="driver-login" id="driver-login">
+                <label>Enter your name to claim rides</label>
+                <div class="driver-login-row">
+                    <input type="text" id="driver-name-input" placeholder="Your Name" autocomplete="name">
+                    <button onclick="loginDriver()">Start</button>
+                </div>
+            </div>
+
+            <div class="driver-login" id="driver-status" style="display: none;">
+                <div class="driver-status">
+                    <div class="driver-info">
+                        <div class="driver-avatar" id="driver-avatar">M</div>
+                        <div>
+                            <div class="driver-name" id="driver-display-name">Driver Name</div>
+                            <div class="driver-rides"><span id="my-rides-count">0</span> active rides</div>
+                        </div>
+                    </div>
+                    <button class="logout-btn" onclick="logoutDriver()">Switch Driver</button>
+                </div>
+            </div>
+
+            <div class="rides-section" id="my-rides-section" style="display: none;">
+                <div class="section-header">
+                    <div class="section-title">🚗 My Rides</div>
+                </div>
+                <div id="my-rides-list">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="rides-section">
+                <div class="section-header">
+                    <div class="section-title">📋 Available Rides</div>
+                    <div class="section-count"><span id="available-count">0</span> waiting</div>
+                </div>
+                <div id="available-rides-list">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================================
+        // CONFIGURATION - Update these to connect to your Google Sheet
+        // ============================================================
+        const CONFIG = {
+            // To connect to your Google Sheet:
+            // 1. Open your Google Sheet
+            // 2. Go to File > Share > Publish to web
+            // 3. Select the tab you want (e.g., "Mon Jan 26, 2026")
+            // 4. Choose "Comma-separated values (.csv)"
+            // 5. Click Publish and copy the URL
+            // 6. Paste it below
+            
+            SHEET_CSV_URL: '', // e.g., 'https://docs.google.com/spreadsheets/d/e/2PACX.../pub?gid=0&single=true&output=csv'
+            
+            // For writing data back to the sheet, you'll need a Google Apps Script
+            // See the README for setup instructions
+            APPS_SCRIPT_URL: '', // e.g., 'https://script.google.com/macros/s/.../exec'
+            
+            // Refresh interval in milliseconds (0 to disable auto-refresh)
+            REFRESH_INTERVAL: 30000, // 30 seconds
+            
+            // Use demo data if no sheet is configured
+            USE_DEMO_DATA: true
+        };
+
+        // ============================================================
+        // DEMO DATA - Remove this section when using real data
+        // ============================================================
+        const DEMO_RIDES = [
+            { id: 1, time: '07:00', name: 'Alex Dominguez', phone: '615-974-1781', pickup: 'Gallatin NHC', dropoff: '169 Hickory Heights Dr Hendersonville, TN', type: 'To Home', driver: 'Matt Riggle', confirmed: true, status: 'goa', comments: '' },
+            { id: 2, time: '09:00', name: 'Chesaney Leach', phone: '615-450-8403', pickup: '255 Mockingbird Lane, Hartsville TN 37074', dropoff: 'Tristar Hendersonville', type: 'To Work', driver: '', confirmed: false, status: 'available', comments: '' },
+            { id: 3, time: '16:00', name: 'Marissa Mott', phone: '816-288-1559', pickup: 'Vintage Foxland - 1391 Foxland Blvd, Gallatin, TN 37066', dropoff: 'Vanderbilt Medical Center, 1211 Medical Center Dr, Nashville, TN 37232', type: 'To Work', driver: '', confirmed: false, status: 'available', comments: '' },
+            { id: 4, time: '17:00', name: 'Shawn Baker', phone: '629-298-8622', pickup: 'Centennial Medical Center (patient)', dropoff: '123 Cole\'s Ferry Road', type: 'Other', driver: '', confirmed: false, status: 'available', comments: 'Chemo Patient trying to get home' },
+            { id: 5, time: '18:00', name: 'Sarah Jean Mary', phone: '615-559-3509', pickup: '1211 Jubilee Drive, Mt Juliet', dropoff: 'NHC Place Sumner - Gallatin', type: 'To Work', driver: '', confirmed: false, status: 'available', comments: '' },
+            { id: 6, time: '18:00', name: 'Lexi Bloomfield', phone: '817-307-9233', pickup: '2131 Waterside Dr, Nashville, TN 37207', dropoff: 'Centennial Hospital', type: 'Other', driver: '', confirmed: false, status: 'available', comments: 'Pick up to go home to change scrubs and then to Centennial' },
+            { id: 7, time: '18:00', name: 'Emily Roque', phone: '629-255-7408', pickup: '7074 Sutton Drive, White House TN 37188', dropoff: 'St Thomas Ascension Midtown Hospital', type: 'To Work', driver: '', confirmed: false, status: 'available', comments: 'Can walk to Crossroads Medical Center on Sage Rd if easier' },
+            { id: 8, time: '18:45', name: 'April Irwin', phone: '615-840-9034', pickup: '102 Beechbrook Court, White House TN', dropoff: '555 Hartsville Pike, Gallatin TN', type: 'To Home', driver: 'Jason Meadows', confirmed: false, status: 'claimed', comments: '' },
+            { id: 9, time: '18:45', name: 'Kelsi Whitaker', phone: '270-776-1308', pickup: '1450 Taylor Barrow Rd, Auburn KY', dropoff: '355 New Shackle Island Rd, Hendersonville TN', type: 'To Work', driver: '', confirmed: false, status: 'available', comments: '' },
+            { id: 10, time: '19:00', name: 'Julitha', phone: '615-609-4059', pickup: '321 Cheval Drive, Gallatin, TN', dropoff: 'NHC Gallatin', type: 'To Work', driver: 'Matt Riggle', confirmed: false, status: 'goa', comments: '' },
+            { id: 11, time: '19:00', name: 'Kiyosha Roberts', phone: '479-547-5358', pickup: '552 East Bledsoe St, Gallatin', dropoff: 'NHC Place Sumner - Gallatin', type: 'To Work', driver: 'Matt Riggle', confirmed: false, status: 'goa', comments: '' },
+            { id: 12, time: '19:00', name: 'Willimena Shaw', phone: '615-473-0275', pickup: '331 Turfway Park, Gallatin, TN 37066', dropoff: 'Tristar Hendersonville Hospital, 355 New Shackle Island Rd', type: 'To Work', driver: 'Cyndi Schuitema', confirmed: false, status: 'completed', comments: '' },
+            { id: 13, time: '19:00', name: 'Zee Bello', phone: '615-707-2099', pickup: 'Summit Medical Center, Hermitage TN', dropoff: '1026 Merrick Road, Hendersonville TN', type: 'To Home', driver: 'Pete Prosser', confirmed: false, status: 'claimed', comments: '' },
+            { id: 14, time: '19:00', name: 'Kelly Brents', phone: '703-939-7054', pickup: '273 Big Station Camp Blvd, Building 2, Gallatin TN 37066', dropoff: 'Hendersonville Medical Center', type: 'To Work', driver: '', confirmed: false, status: 'available', comments: 'First left turn after entering apartment complex' },
+            { id: 15, time: '19:00', name: 'Anastacia Driscoll', phone: '615-607-5836', pickup: 'Sumner Regional Hospital', dropoff: '200 Mulberry Drive, Lafayette TN 37083', type: 'To Home', driver: '', confirmed: false, status: 'available', comments: '' },
+            { id: 16, time: '19:30', name: 'Karla Cortez', phone: '615-522-8190', pickup: 'Hendersonville Hospital', dropoff: '149 Cartwright Way, Goodlettsville TN', type: 'To Home', driver: '', confirmed: false, status: 'available', comments: '' },
+            { id: 17, time: 'Anytime', name: 'Amber Sanders', phone: '', pickup: '6162 Dewey Carr Rd, Bethpage', dropoff: 'Riverbrooke Subdivision', type: 'Other', driver: 'Billy Jones', confirmed: true, status: 'completed', comments: 'Mom & 2 kids to grandma in Gallatin' },
+            { id: 18, time: 'Anytime', name: 'Randy Midgett (via Kristen McCarter)', phone: '615-210-4625', pickup: '1156 Old Shiloh Rd, Goodlettsville, TN 37115', dropoff: 'Madison near Gallatin Rd/Neeleys Bend', type: 'Other', driver: '', confirmed: false, status: 'available', comments: 'Elderly father needs to be moved to daughter' },
+            { id: 19, time: 'Anytime', name: 'Janet Jacobs (via Stephanie Hayes)', phone: '615-887-6532', pickup: '100 Robert Cartwright Dr, Apt 213, Goodlettsville, TN 37072', dropoff: 'Holiday Inn Express, Goodlettsville', type: 'Other', driver: '', confirmed: false, status: 'claimed', comments: '65yo disabled mom (mental health) with rollator, scared at home with no power. Needs assistance with belongings.' },
+            { id: 20, time: 'TBD', name: 'Sheilah', phone: '615-569-3717', pickup: 'Nashville Airport', dropoff: '4947 Albert Fentress, Greenbrier', type: 'Other', driver: 'Pete Prosser', confirmed: false, status: 'completed', comments: 'Need ride from airport to Greenbrier' },
+        ];
+
+        // ============================================================
+        // APP STATE
+        // ============================================================
+        let rides = [...DEMO_RIDES];
+        let currentFilter = 'all';
+        let currentDriver = localStorage.getItem('snowAngelsDriver') || '';
+        let currentView = 'dispatcher';
+
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            
+            if (currentDriver) {
+                showDriverLoggedIn();
+            }
+            
+            renderAll();
+            
+            // Auto-refresh if configured
+            if (CONFIG.REFRESH_INTERVAL > 0) {
+                setInterval(refreshData, CONFIG.REFRESH_INTERVAL);
+            }
+        });
+
+        // ============================================================
+        // DATA FUNCTIONS
+        // ============================================================
+        async function fetchRides() {
+            if (!CONFIG.SHEET_CSV_URL || CONFIG.USE_DEMO_DATA) {
+                return DEMO_RIDES;
+            }
+            
+            try {
+                const response = await fetch(CONFIG.SHEET_CSV_URL);
+                const csv = await response.text();
+                return parseCSV(csv);
+            } catch (error) {
+                console.error('Error fetching rides:', error);
+                showToast('Failed to load rides', 'error');
+                return rides; // Return cached data
+            }
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',');
+            
+            return lines.slice(1).map((line, index) => {
+                const values = parseCSVLine(line);
+                return {
+                    id: index + 1,
+                    driver: values[0] || '',
+                    status: parseStatus(values[1]),
+                    time: values[2] || '',
+                    confirmed: values[3]?.toLowerCase() === 'yes',
+                    name: values[4] || '',
+                    phone: values[5] || '',
+                    pickup: values[6] || '',
+                    dropoff: values[7] || '',
+                    type: values[8] || '',
+                    comments: values[9] || ''
+                };
+            }).filter(r => r.name); // Filter out empty rows
+        }
+
+        function parseCSVLine(line) {
+            const values = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    values.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            values.push(current.trim());
+            return values;
+        }
+
+        function parseStatus(value) {
+            if (!value) return 'available';
+            const lower = value.toLowerCase().trim();
+            if (lower === 'goa') return 'goa';
+            if (lower === 'completed' || lower === 'done') return 'completed';
+            if (lower === 'cancelled') return 'cancelled';
+            return 'available';
+        }
+
+        function getRideStatus(ride) {
+            if (ride.status === 'goa') return 'goa';
+            if (ride.status === 'completed') return 'completed';
+            if (ride.status === 'cancelled') return 'cancelled';
+            if (ride.driver && ride.status === 'enroute') return 'enroute';
+            if (ride.driver) return 'claimed';
+            return 'available';
+        }
+
+        async function updateRide(rideId, updates) {
+            // Update local state
+            const index = rides.findIndex(r => r.id === rideId);
+            if (index !== -1) {
+                rides[index] = { ...rides[index], ...updates };
+                renderAll();
+            }
+
+            // If Apps Script URL is configured, send update
+            if (CONFIG.APPS_SCRIPT_URL) {
+                try {
+                    await fetch(CONFIG.APPS_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ rideId, updates })
+                    });
+                    showToast('Updated successfully', 'success');
+                } catch (error) {
+                    console.error('Error updating ride:', error);
+                    showToast('Update saved locally', 'warning');
+                }
+            } else {
+                showToast('Updated (demo mode)', 'success');
+            }
+        }
+
+        async function refreshData() {
+            const btn = document.querySelector('.refresh-btn');
+            btn.classList.add('spinning');
+            
+            rides = await fetchRides();
+            renderAll();
+            
+            setTimeout(() => btn.classList.remove('spinning'), 500);
+        }
+
+        // ============================================================
+        // RENDER FUNCTIONS
+        // ============================================================
+        function renderAll() {
+            updateCounts();
+            renderDispatcherTable();
+            renderDriverView();
+        }
+
+        function updateCounts() {
+            const counts = {
+                all: rides.length,
+                available: rides.filter(r => getRideStatus(r) === 'available').length,
+                claimed: rides.filter(r => ['claimed', 'enroute'].includes(getRideStatus(r))).length,
+                completed: rides.filter(r => getRideStatus(r) === 'completed').length,
+                goa: rides.filter(r => getRideStatus(r) === 'goa').length
+            };
+
+            Object.entries(counts).forEach(([key, value]) => {
+                const el = document.getElementById(`count-${key}`);
+                if (el) el.textContent = value;
+            });
+        }
+
+        function renderDispatcherTable() {
+            const tbody = document.getElementById('dispatcher-table-body');
+            const filteredRides = filterRidesList(rides);
+            
+            tbody.innerHTML = filteredRides.map(ride => {
+                const status = getRideStatus(ride);
+                return `
+                    <tr data-ride-id="${ride.id}">
+                        <td class="time-cell">${ride.time}</td>
+                        <td class="name-cell">${escapeHtml(ride.name)}</td>
+                        <td class="phone-cell">
+                            <a href="tel:${ride.phone}">${ride.phone}</a>
+                        </td>
+                        <td class="address-cell">${escapeHtml(ride.pickup)}</td>
+                        <td class="address-cell">${escapeHtml(ride.dropoff)}</td>
+                        <td>${ride.type}</td>
+                        <td class="driver-cell">
+                            <input type="text" 
+                                   value="${escapeHtml(ride.driver)}" 
+                                   placeholder="Assign driver..."
+                                   onchange="updateRide(${ride.id}, { driver: this.value })">
+                        </td>
+                        <td class="confirmed-cell">
+                            <input type="checkbox" 
+                                   ${ride.confirmed ? 'checked' : ''} 
+                                   onchange="updateRide(${ride.id}, { confirmed: this.checked })">
+                        </td>
+                        <td class="status-cell">
+                            <select onchange="updateRide(${ride.id}, { status: this.value })">
+                                <option value="available" ${status === 'available' ? 'selected' : ''}>Available</option>
+                                <option value="claimed" ${status === 'claimed' ? 'selected' : ''}>Claimed</option>
+                                <option value="enroute" ${status === 'enroute' ? 'selected' : ''}>En Route</option>
+                                <option value="completed" ${status === 'completed' ? 'selected' : ''}>Completed</option>
+                                <option value="goa" ${status === 'goa' ? 'selected' : ''}>GOA</option>
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderDriverView() {
+            renderAvailableRides();
+            renderMyRides();
+        }
+
+        function renderAvailableRides() {
+            const container = document.getElementById('available-rides-list');
+            const available = filterRidesList(rides.filter(r => getRideStatus(r) === 'available'));
+            
+            document.getElementById('available-count').textContent = available.length;
+            
+            if (available.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✓</div>
+                        <div class="empty-state-text">No available rides right now</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = available.map(ride => renderRideCard(ride, 'available')).join('');
+        }
+
+        function renderMyRides() {
+            const container = document.getElementById('my-rides-list');
+            const section = document.getElementById('my-rides-section');
+            
+            if (!currentDriver) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            const myRides = rides.filter(r => 
+                r.driver.toLowerCase() === currentDriver.toLowerCase() && 
+                !['completed', 'goa', 'cancelled'].includes(getRideStatus(r))
+            );
+            
+            document.getElementById('my-rides-count').textContent = myRides.length;
+            
+            if (myRides.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            section.style.display = 'block';
+            container.innerHTML = myRides.map(ride => renderRideCard(ride, 'mine')).join('');
+        }
+
+        function renderRideCard(ride, context) {
+            const status = getRideStatus(ride);
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(ride.pickup)}&destination=${encodeURIComponent(ride.dropoff)}`;
+            
+            let actions = '';
+            
+            if (context === 'available' && currentDriver) {
+                actions = `
+                    <div class="ride-actions">
+                        <button class="action-btn primary" onclick="claimRide(${ride.id})">
+                            ✋ Claim This Ride
+                        </button>
+                    </div>
+                `;
+            } else if (context === 'mine') {
+                actions = `
+                    <div class="quick-actions">
+                        <a href="tel:${ride.phone}" class="quick-action call">📞 Call</a>
+                        <a href="${mapsUrl}" target="_blank" class="quick-action navigate">🗺️ Navigate</a>
+                    </div>
+                    <div class="ride-actions" style="margin-top: 10px;">
+                        ${status === 'claimed' ? `
+                            <button class="action-btn success" onclick="updateRide(${ride.id}, { status: 'enroute' })">
+                                🚗 En Route
+                            </button>
+                        ` : ''}
+                        ${status === 'enroute' ? `
+                            <button class="action-btn success" onclick="updateRide(${ride.id}, { status: 'completed' })">
+                                ✓ Completed
+                            </button>
+                        ` : ''}
+                        <button class="action-btn danger small" onclick="updateRide(${ride.id}, { status: 'goa' })">
+                            GOA
+                        </button>
+                        <button class="action-btn secondary small" onclick="unclaimRide(${ride.id})">
+                            Release
+                        </button>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="ride-card status-${status}">
+                    <div class="ride-header">
+                        <div>
+                            <div class="ride-time">${ride.time}</div>
+                            <div class="ride-time-label">Pickup Time</div>
+                        </div>
+                        <span class="ride-status ${status}">${status}</span>
+                    </div>
+                    
+                    <div class="ride-passenger">
+                        <div class="ride-passenger-name">${escapeHtml(ride.name)}</div>
+                        ${ride.phone ? `<a href="tel:${ride.phone}" class="ride-passenger-phone">${ride.phone}</a>` : ''}
+                    </div>
+                    
+                    <div class="ride-route">
+                        <div class="ride-location">
+                            <div class="location-icon pickup">▲</div>
+                            <div class="location-details">
+                                <div class="location-label">Pickup</div>
+                                <div class="location-address">${escapeHtml(ride.pickup)}</div>
+                            </div>
+                        </div>
+                        <div class="ride-location">
+                            <div class="location-icon dropoff">▼</div>
+                            <div class="location-details">
+                                <div class="location-label">Dropoff</div>
+                                <div class="location-address">${escapeHtml(ride.dropoff)}</div>
+                                ${ride.type ? `<span class="ride-type">${ride.type}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${ride.comments ? `
+                        <div class="ride-comments">
+                            <span class="ride-comments-icon">⚠️</span>
+                            <span>${escapeHtml(ride.comments)}</span>
+                        </div>
+                    ` : ''}
+                    
+                    ${ride.driver && context === 'available' ? `
+                        <div class="ride-driver">
+                            <span class="ride-driver-label">Driver:</span>
+                            <span class="ride-driver-name">${escapeHtml(ride.driver)}</span>
+                            ${ride.confirmed ? '<span class="confirmed-badge">Confirmed</span>' : ''}
+                        </div>
+                    ` : ''}
+                    
+                    ${actions}
+                </div>
+            `;
+        }
+
+        // ============================================================
+        // USER ACTIONS
+        // ============================================================
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+            document.getElementById('dispatcher-view').classList.toggle('active', view === 'dispatcher');
+            document.getElementById('driver-view').classList.toggle('active', view === 'driver');
+        }
+
+        function filterRides(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.stat-chip').forEach(chip => {
+                chip.classList.toggle('active', chip.dataset.filter === filter);
+            });
+            renderAll();
+        }
+
+        function filterRidesList(ridesList) {
+            if (currentFilter === 'all') return ridesList;
+            return ridesList.filter(r => {
+                const status = getRideStatus(r);
+                if (currentFilter === 'claimed') return ['claimed', 'enroute'].includes(status);
+                return status === currentFilter;
+            });
+        }
+
+        function loginDriver() {
+            const input = document.getElementById('driver-name-input');
+            const name = input.value.trim();
+            if (!name) {
+                showToast('Please enter your name', 'error');
+                return;
+            }
+            currentDriver = name;
+            localStorage.setItem('snowAngelsDriver', name);
+            showDriverLoggedIn();
+            renderAll();
+            showToast(`Welcome, ${name}!`, 'success');
+        }
+
+        function logoutDriver() {
+            currentDriver = '';
+            localStorage.removeItem('snowAngelsDriver');
+            document.getElementById('driver-login').style.display = 'block';
+            document.getElementById('driver-status').style.display = 'none';
+            document.getElementById('my-rides-section').style.display = 'none';
+            renderAll();
+        }
+
+        function showDriverLoggedIn() {
+            document.getElementById('driver-login').style.display = 'none';
+            document.getElementById('driver-status').style.display = 'block';
+            document.getElementById('driver-display-name').textContent = currentDriver;
+            document.getElementById('driver-avatar').textContent = currentDriver.charAt(0).toUpperCase();
+            document.getElementById('driver-name-input').value = currentDriver;
+        }
+
+        function claimRide(rideId) {
+            if (!currentDriver) {
+                showToast('Please enter your name first', 'error');
+                return;
+            }
+            updateRide(rideId, { driver: currentDriver, status: 'claimed' });
+        }
+
+        function unclaimRide(rideId) {
+            updateRide(rideId, { driver: '', status: 'available' });
+        }
+
+        function changeDate(date) {
+            // In real implementation, this would fetch data for the selected date
+            showToast(`Loading rides for ${date}...`, 'success');
+            // For demo, we just refresh
+            refreshData();
+        }
+
+        // ============================================================
+        // UTILITIES
+        // ============================================================
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit' 
+            });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
