@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1877F2">
-    <title>Snow Angels Dispatch 1.2</title>
+    <title>Snow Angels Dispatch 1.03</title>
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -877,6 +877,12 @@
             color: #047857;
         }
 
+        .connection-status.error {
+            background: #FEE2E2;
+            color: #B91C1C;
+            font-weight: 600;
+        }
+
         .connection-dot {
             width: 8px;
             height: 8px;
@@ -1162,7 +1168,7 @@
         // ============================================================
         // INITIALIZATION
         // ============================================================
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             updateDateTime();
             setInterval(updateDateTime, 1000);
             
@@ -1170,7 +1176,8 @@
                 showDriverLoggedIn();
             }
             
-            renderAll();
+            // Fetch live data immediately on load
+            await refreshData();
             
             // Auto-refresh if configured
             if (CONFIG.REFRESH_INTERVAL > 0) {
@@ -1183,9 +1190,11 @@
         // ============================================================
         let currentTab = ''; // Will be set from API response
         let availableTabs = []; // Populated from API
+        let connectionFailed = false;
         
         async function fetchRides() {
             if (!CONFIG.APPS_SCRIPT_URL || CONFIG.USE_DEMO_DATA) {
+                updateConnectionStatus(false, 'Demo Mode - No spreadsheet connected');
                 return DEMO_RIDES;
             }
             
@@ -1218,19 +1227,29 @@
                     }
                     
                     // Update connection status
+                    connectionFailed = false;
                     updateConnectionStatus(true, `Live - ${data.tab}`);
                     return data.rides;
                 } else {
                     console.error('API error:', data.error);
-                    showToast(data.error || 'Failed to load rides', 'error');
-                    return rides; // Return cached data
+                    return handleConnectionError(data.error || 'Failed to load rides');
                 }
             } catch (error) {
                 console.error('Error fetching rides:', error);
-                updateConnectionStatus(false, 'Connection error');
-                showToast('Failed to connect - showing cached data', 'error');
-                return rides; // Return cached data
+                return handleConnectionError('Cannot connect to spreadsheet');
             }
+        }
+        
+        function handleConnectionError(message) {
+            connectionFailed = true;
+            updateConnectionStatus(false, `⚠️ ${message} - Showing sample data`);
+            showToast('Connection failed - showing demo data. Try refreshing.', 'error');
+            
+            // If we have cached real data, use it; otherwise show demo
+            if (rides.length > 0 && rides !== DEMO_RIDES) {
+                return rides; // Keep cached real data
+            }
+            return DEMO_RIDES; // Fall back to demo so screen isn't empty
         }
         
         function updateDateDropdown() {
@@ -1244,7 +1263,13 @@
 
         function updateConnectionStatus(connected, message) {
             const el = document.getElementById('connection-status');
-            el.className = `connection-status ${connected ? 'connected' : ''}`;
+            if (connected) {
+                el.className = 'connection-status connected';
+            } else if (connectionFailed) {
+                el.className = 'connection-status error';
+            } else {
+                el.className = 'connection-status';
+            }
             el.querySelector('span:nth-child(2)').textContent = message;
         }
 
