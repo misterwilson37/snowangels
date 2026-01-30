@@ -8,7 +8,7 @@ A mobile-friendly web app for coordinating volunteer drivers during weather emer
 
 - **Dispatcher View**: Full table view with all ride requests, ability to assign drivers and update statuses
 - **Driver View**: Mobile-optimized cards, one-tap claim, status updates, call & navigate buttons
-- **Real-time Updates**: Auto-refreshes every 30 seconds
+- **Real-time Updates**: Data refreshes every 15 seconds directly from your Google Sheet
 - **Works Offline**: PWA that can be installed to home screen
 - **No Login Required**: Drivers just enter their name
 
@@ -18,86 +18,61 @@ A mobile-friendly web app for coordinating volunteer drivers during weather emer
 2. The app works immediately with sample data
 3. Try switching between Dispatcher and Driver views
 
-## Connecting to Your Google Sheet
+## Connecting to Your Google Sheet (One-Time Setup)
 
-### Step 1: Publish Your Sheet
+This is the only setup needed - no "Publish to Web" required!
+
+### Step 1: Add the Script to Your Sheet
 
 1. Open your Google Sheet
-2. Go to **File → Share → Publish to web**
-3. Select the specific tab (e.g., "Mon Jan 26, 2026")
-4. Choose **"Comma-separated values (.csv)"**
-5. Click **Publish**
-6. Copy the URL (looks like `https://docs.google.com/spreadsheets/d/e/2PACX.../pub?gid=0&single=true&output=csv`)
-
-### Step 2: Update the App
-
-Open `index.html` and find the `CONFIG` section near the top of the `<script>`:
+2. Go to **Extensions → Apps Script**
+3. Delete any existing code
+4. Copy/paste everything from `google-apps-script.js`
+5. **Important**: Update the `SHEET_TABS` section (around line 30) to match your actual tab names:
 
 ```javascript
-const CONFIG = {
-    SHEET_CSV_URL: 'PASTE_YOUR_CSV_URL_HERE',
-    APPS_SCRIPT_URL: '',  // We'll add this in Step 3
-    REFRESH_INTERVAL: 30000,
-    USE_DEMO_DATA: false  // Change to false!
+const SHEET_TABS = {
+  '2026-01-25': 'Sun Jan 25, 2026',    // 'YYYY-MM-DD': 'Exact Tab Name'
+  '2026-01-26': 'Mon Jan 26, 2026',
+  // Add more dates as needed
 };
 ```
 
-### Step 3: Enable Write Access (Optional but Recommended)
+### Step 2: Deploy the Script
 
-To let drivers claim rides and update statuses directly from the app, you need a small Google Apps Script:
+1. Click **Deploy → New deployment**
+2. Click the gear icon, select **Web app**
+3. Set "Execute as" to **Me**
+4. Set "Who has access" to **Anyone**
+5. Click **Deploy**
+6. Click **Authorize access** and approve the permissions
+7. **Copy the Web app URL** (looks like `https://script.google.com/macros/s/ABC.../exec`)
 
-1. In your Google Sheet, go to **Extensions → Apps Script**
-2. Delete any existing code and paste this:
+### Step 3: Connect the App
+
+1. Open `index.html` in a text editor
+2. Find the `CONFIG` section near the top
+3. Paste your URL and change `USE_DEMO_DATA` to `false`:
 
 ```javascript
-function doPost(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const data = JSON.parse(e.postData.contents);
-  
-  const { rideId, updates } = data;
-  const row = rideId + 1; // Row 1 is headers, so ride 1 is row 2
-  
-  // Column mapping (adjust if your columns are different)
-  const columns = {
-    driver: 1,      // Column A
-    status: 2,      // Column B  
-    confirmed: 4    // Column D
-  };
-  
-  // Apply updates
-  if (updates.driver !== undefined) {
-    sheet.getRange(row, columns.driver).setValue(updates.driver);
-  }
-  if (updates.status !== undefined) {
-    let statusValue = '';
-    if (updates.status === 'goa') statusValue = 'GOA';
-    else if (updates.status === 'completed') statusValue = 'Completed';
-    sheet.getRange(row, columns.status).setValue(statusValue);
-  }
-  if (updates.confirmed !== undefined) {
-    sheet.getRange(row, columns.confirmed).setValue(updates.confirmed ? 'Yes' : '');
-  }
-  
-  return ContentService.createTextOutput(JSON.stringify({ success: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+const CONFIG = {
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/YOUR_ID_HERE/exec',
+    REFRESH_INTERVAL: 15000,
+    USE_DEMO_DATA: false  // Change this to false!
+};
 ```
 
-3. Click **Deploy → New deployment**
-4. Select **Web app**
-5. Set "Execute as" to **Me**
-6. Set "Who has access" to **Anyone**
-7. Click **Deploy**
-8. Copy the Web app URL
-9. Paste it into the `APPS_SCRIPT_URL` in the app config
+4. Save and refresh the app - you're live!
 
-## Hosting on GitHub Pages
+## Hosting on GitHub Pages (Free)
 
 1. Create a new repository on GitHub
 2. Upload `index.html` and `manifest.json`
 3. Go to **Settings → Pages**
 4. Set source to **main branch**
 5. Your app will be live at `https://yourusername.github.io/repo-name/`
+
+Share that URL with your drivers!
 
 ## Expected Sheet Format
 
@@ -107,33 +82,38 @@ The app expects these columns in order:
 |---|---|---|---|---|---|---|---|---|---|
 | Driver | Completed | Time (24hr) | Contacted & Confirmed | Name | Contact Info | Starting Location | Destination | Pick up/Drop off | Comments |
 
-- **Driver**: Name of assigned driver (empty = available)
-- **Completed**: "GOA", "Completed", or empty
-- **Time**: Pickup time in 24hr format or "Anytime"
-- **Contacted & Confirmed**: "Yes" or empty
-- **Name**: Passenger name
-- **Contact Info**: Phone number
-- **Starting Location**: Pickup address
-- **Destination**: Dropoff address
-- **Pick up/Drop off**: "To Work", "To Home", or "Other"
-- **Comments**: Special notes
+This matches the format you're already using!
 
-## Tips
+## How It Works
 
-- **Multiple Dates**: Create a separate published CSV URL for each day's tab
-- **Driver Names**: Drivers should use consistent names so the app can track their rides
-- **GOA**: "Gone on Arrival" - passenger wasn't there
-- **Mobile Install**: On phones, use "Add to Home Screen" for app-like experience
+- **Reading**: The app fetches data directly from your sheet every 15 seconds
+- **Writing**: When a driver claims a ride or updates status, it writes directly to the sheet
+- **Dispatchers can still use the sheet**: The Google Sheet remains the source of truth - dispatchers can edit it directly and changes appear in the app
+
+## Tips for Drivers
+
+- **Add to Home Screen**: On your phone, tap the browser menu and "Add to Home Screen" for an app-like experience
+- **Use consistent names**: Always enter your name the same way so the app can track your rides
+- **Tap to call/navigate**: The phone numbers and addresses are clickable!
 
 ## Customization
 
 - **Colors**: Edit the CSS variables at the top of the `<style>` section
-- **Refresh Rate**: Change `REFRESH_INTERVAL` (in milliseconds)
-- **Status Options**: Modify the status dropdown options in `renderDispatcherTable()`
+- **Refresh Rate**: Change `REFRESH_INTERVAL` in CONFIG (in milliseconds)
+- **Add more dates**: Update the `SHEET_TABS` in the Apps Script and the date dropdown in the HTML
 
-## Support
+## Troubleshooting
 
-This app was built as a volunteer project. For issues or questions, contact the developer.
+**"Demo Mode" still showing after setup?**
+- Make sure `USE_DEMO_DATA` is set to `false`
+- Check that your Apps Script URL is correct
+
+**Rides not updating?**
+- Check the Apps Script execution log: Extensions → Apps Script → Executions
+- Make sure tab names in `SHEET_TABS` exactly match your sheet (including spaces and punctuation)
+
+**Permission errors?**
+- Re-deploy the Apps Script and re-authorize
 
 ---
 
