@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1877F2">
-    <title>Snow Angels Dispatch 1.07</title>
+    <title>Snow Angels Dispatch 1.09</title>
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -773,7 +773,214 @@
             font-size: 15px;
         }
 
-        /* Quick Actions for Driver */
+        /* Status Stepper */
+        .status-stepper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 16px 0;
+            position: relative;
+        }
+
+        .status-stepper::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 24px;
+            right: 24px;
+            height: 3px;
+            background: var(--gray-200);
+            z-index: 0;
+        }
+
+        .stepper-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            z-index: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .stepper-step.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .stepper-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--white);
+            border: 3px solid var(--gray-300);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-400);
+            transition: all 0.2s ease;
+        }
+
+        .stepper-step.completed .stepper-icon {
+            background: var(--status-enroute);
+            border-color: var(--status-enroute);
+            color: var(--white);
+        }
+
+        .stepper-step.current .stepper-icon {
+            background: var(--blue-primary);
+            border-color: var(--blue-primary);
+            color: var(--white);
+            box-shadow: 0 0 0 4px rgba(24, 119, 242, 0.2);
+        }
+
+        .stepper-step.next .stepper-icon {
+            border-color: var(--blue-primary);
+            color: var(--blue-primary);
+            background: var(--blue-light);
+        }
+
+        .stepper-step.next:hover .stepper-icon {
+            background: var(--blue-primary);
+            color: var(--white);
+            transform: scale(1.1);
+        }
+
+        .stepper-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-align: center;
+            max-width: 60px;
+        }
+
+        .stepper-step.completed .stepper-label,
+        .stepper-step.current .stepper-label {
+            color: var(--gray-700);
+        }
+
+        .stepper-step.next .stepper-label {
+            color: var(--blue-primary);
+        }
+
+        /* Cancel button below stepper */
+        .cancel-ride-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            color: var(--gray-600);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .cancel-ride-btn:hover {
+            background: #FEE2E2;
+            border-color: var(--status-goa);
+            color: var(--status-goa);
+        }
+
+        /* Confirmation Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 24px;
+            max-width: 340px;
+            width: 100%;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 8px;
+        }
+
+        .modal-message {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn.cancel {
+            background: var(--gray-100);
+            color: var(--gray-700);
+        }
+
+        .modal-btn.cancel:hover {
+            background: var(--gray-200);
+        }
+
+        .modal-btn.confirm-complete {
+            background: var(--status-enroute);
+            color: var(--white);
+        }
+
+        .modal-btn.confirm-complete:hover {
+            background: #059669;
+        }
+
+        .modal-btn.confirm-cancel {
+            background: var(--status-goa);
+            color: var(--white);
+        }
+
+        .modal-btn.confirm-cancel:hover {
+            background: #DC2626;
+        }
+
+        /* Quick Actions adjustment */
         .quick-actions {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -830,6 +1037,244 @@
 
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+
+        /* Status Stepper */
+        .status-stepper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 12px 0;
+            padding: 16px 12px;
+            background: var(--gray-50);
+            border-radius: var(--radius-sm);
+            position: relative;
+        }
+
+        .status-stepper::before {
+            content: '';
+            position: absolute;
+            top: 32px;
+            left: 36px;
+            right: 36px;
+            height: 3px;
+            background: var(--gray-200);
+            z-index: 0;
+        }
+
+        .stepper-progress {
+            position: absolute;
+            top: 32px;
+            left: 36px;
+            height: 3px;
+            background: var(--status-enroute);
+            z-index: 1;
+            transition: width 0.3s ease;
+        }
+
+        .stepper-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            z-index: 2;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .stepper-step.disabled {
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .stepper-step.disabled .stepper-icon {
+            opacity: 0.4;
+        }
+
+        .stepper-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--white);
+            border: 3px solid var(--gray-300);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-400);
+            transition: all 0.2s ease;
+        }
+
+        .stepper-step.completed .stepper-icon {
+            background: var(--status-enroute);
+            border-color: var(--status-enroute);
+            color: var(--white);
+        }
+
+        .stepper-step.current .stepper-icon {
+            background: var(--blue-primary);
+            border-color: var(--blue-primary);
+            color: var(--white);
+            transform: scale(1.15);
+            box-shadow: 0 0 0 4px rgba(24, 119, 242, 0.25);
+        }
+
+        .stepper-step.next .stepper-icon {
+            border-color: var(--blue-primary);
+            color: var(--blue-primary);
+            border-style: dashed;
+        }
+
+        .stepper-step.next:hover .stepper-icon,
+        .stepper-step.next:active .stepper-icon {
+            background: var(--blue-light);
+            transform: scale(1.1);
+        }
+
+        .stepper-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            text-align: center;
+            max-width: 55px;
+            line-height: 1.2;
+        }
+
+        .stepper-step.completed .stepper-label,
+        .stepper-step.current .stepper-label {
+            color: var(--gray-700);
+        }
+
+        .stepper-step.next .stepper-label {
+            color: var(--blue-primary);
+            font-weight: 700;
+        }
+
+        /* Cancel button for stepper */
+        .cancel-ride-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-sm);
+            color: var(--gray-600);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .cancel-ride-btn:hover {
+            background: #FEE2E2;
+            border-color: var(--status-goa);
+            color: var(--status-goa);
+        }
+
+        /* Confirmation Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 24px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 8px;
+        }
+
+        .modal-message {
+            font-size: 14px;
+            color: var(--gray-600);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn.confirm-complete {
+            background: var(--status-enroute);
+            color: var(--white);
+        }
+
+        .modal-btn.confirm-complete:hover {
+            background: #059669;
+        }
+
+        .modal-btn.confirm-cancel {
+            background: var(--status-goa);
+            color: var(--white);
+        }
+
+        .modal-btn.confirm-cancel:hover {
+            background: #DC2626;
+        }
+
+        .modal-btn.modal-dismiss {
+            background: var(--gray-100);
+            color: var(--gray-700);
+        }
+
+        .modal-btn.modal-dismiss:hover {
+            background: var(--gray-200);
         }
 
         /* Toast Notifications */
@@ -1161,11 +1606,37 @@
     </main>
 
     <footer class="app-footer">
-        <span>App v<span id="app-version">1.07</span></span>
+        <span>App v<span id="app-version">1.09</span></span>
         <span id="script-version-display"></span>
     </footer>
 
     <div class="toast" id="toast"></div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal-content">
+            <div class="modal-icon" id="modal-icon">✓</div>
+            <div class="modal-title" id="modal-title">Confirm</div>
+            <div class="modal-message" id="modal-message">Are you sure?</div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeModal()">Go Back</button>
+                <button class="modal-btn" id="modal-confirm-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal-content">
+            <div class="modal-icon" id="modal-icon">✓</div>
+            <div class="modal-title" id="modal-title">Confirm Action</div>
+            <div class="modal-message" id="modal-message">Are you sure?</div>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-dismiss" onclick="closeModal()">Go Back</button>
+                <button class="modal-btn" id="modal-confirm-btn" onclick="confirmModalAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // ============================================================
@@ -1415,19 +1886,39 @@
         function parseStatus(value) {
             if (!value) return 'available';
             const lower = value.toLowerCase().trim();
-            if (lower === 'goa') return 'goa';
+            if (lower === 'en route' || lower === 'enroute') return 'enroute';
+            if (lower === 'onsite' || lower === 'on site') return 'onsite';
+            if (lower === 'active') return 'active';
             if (lower === 'completed' || lower === 'done') return 'completed';
-            if (lower === 'cancelled') return 'cancelled';
+            if (lower === 'cancelled' || lower === 'canceled') return 'cancelled';
+            if (lower === 'goa') return 'goa';  // Keep for backward compatibility
             return 'available';
         }
 
+        // Status progression order
+        const STATUS_ORDER = ['enroute', 'onsite', 'active', 'completed'];
+        const FINAL_STATUSES = ['completed', 'cancelled'];
+
         function getRideStatus(ride) {
-            if (ride.status === 'goa') return 'goa';
+            // Final statuses
             if (ride.status === 'completed') return 'completed';
             if (ride.status === 'cancelled') return 'cancelled';
-            if (ride.driver && ride.status === 'enroute') return 'enroute';
+            if (ride.status === 'goa') return 'cancelled'; // Map old GOA to cancelled
+            
+            // Active workflow statuses
+            if (ride.status === 'active') return 'active';
+            if (ride.status === 'onsite') return 'onsite';
+            if (ride.status === 'enroute') return 'enroute';
+            
+            // Has driver but no status = claimed (legacy support)
             if (ride.driver) return 'claimed';
+            
             return 'available';
+        }
+
+        function getStatusIndex(status) {
+            const idx = STATUS_ORDER.indexOf(status);
+            return idx >= 0 ? idx : -1;
         }
 
         async function updateRide(rideId, updates) {
@@ -1501,12 +1992,14 @@
         }
 
         function updateCounts() {
+            // Group statuses: "claimed" includes enroute, onsite, active
+            const inProgressStatuses = ['claimed', 'enroute', 'onsite', 'active'];
             const counts = {
                 all: rides.length,
                 available: rides.filter(r => getRideStatus(r) === 'available').length,
-                claimed: rides.filter(r => ['claimed', 'enroute'].includes(getRideStatus(r))).length,
+                claimed: rides.filter(r => inProgressStatuses.includes(getRideStatus(r))).length,
                 completed: rides.filter(r => getRideStatus(r) === 'completed').length,
-                goa: rides.filter(r => getRideStatus(r) === 'goa').length
+                goa: rides.filter(r => getRideStatus(r) === 'cancelled').length
             };
 
             Object.entries(counts).forEach(([key, value]) => {
@@ -1545,10 +2038,11 @@
                         <td class="status-cell">
                             <select onchange="updateRide(${ride.id}, { status: this.value })">
                                 <option value="available" ${status === 'available' ? 'selected' : ''}>Available</option>
-                                <option value="claimed" ${status === 'claimed' ? 'selected' : ''}>Claimed</option>
                                 <option value="enroute" ${status === 'enroute' ? 'selected' : ''}>En Route</option>
+                                <option value="onsite" ${status === 'onsite' ? 'selected' : ''}>On Site</option>
+                                <option value="active" ${status === 'active' ? 'selected' : ''}>Active</option>
                                 <option value="completed" ${status === 'completed' ? 'selected' : ''}>Completed</option>
-                                <option value="goa" ${status === 'goa' ? 'selected' : ''}>GOA</option>
+                                <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
                             </select>
                         </td>
                     </tr>
@@ -1620,31 +2114,71 @@
                     </div>
                 `;
             } else if (context === 'mine') {
+                // Build the stepper UI
+                const currentIdx = getStatusIndex(status);
+                
                 actions = `
                     <div class="quick-actions">
                         <a href="tel:${ride.phone}" class="quick-action call">📞 Call</a>
                         <a href="${mapsUrl}" target="_blank" class="quick-action navigate">🗺️ Navigate</a>
                     </div>
-                    <div class="ride-actions" style="margin-top: 10px;">
-                        ${status === 'claimed' ? `
-                            <button class="action-btn success" onclick="updateRide(${ride.id}, { status: 'enroute' })">
-                                🚗 En Route
-                            </button>
-                        ` : ''}
-                        ${status === 'enroute' ? `
-                            <button class="action-btn success" onclick="updateRide(${ride.id}, { status: 'completed' })">
-                                ✓ Completed
-                            </button>
-                        ` : ''}
-                        <button class="action-btn danger small" onclick="updateRide(${ride.id}, { status: 'goa' })">
-                            GOA
-                        </button>
-                        <button class="action-btn secondary small" onclick="unclaimRide(${ride.id})">
-                            Release
-                        </button>
+                    <div class="status-stepper">
+                        ${STATUS_ORDER.map((s, idx) => {
+                            let stepClass = '';
+                            let icon = idx + 1;
+                            let clickHandler = '';
+                            
+                            if (idx < currentIdx) {
+                                stepClass = 'completed';
+                                icon = '✓';
+                            } else if (idx === currentIdx) {
+                                stepClass = 'current';
+                            } else if (idx === currentIdx + 1) {
+                                stepClass = 'next';
+                                if (s === 'completed') {
+                                    clickHandler = `onclick="showConfirmModal(${ride.id}, 'completed')"`;
+                                } else {
+                                    clickHandler = `onclick="advanceStatus(${ride.id}, '${s}')"`;
+                                }
+                            } else {
+                                stepClass = 'disabled';
+                            }
+                            
+                            const labels = {
+                                enroute: 'En Route',
+                                onsite: 'On Site', 
+                                active: 'Active',
+                                completed: 'Done'
+                            };
+                            
+                            return `
+                                <div class="stepper-step ${stepClass}" ${clickHandler}>
+                                    <div class="stepper-icon">${icon}</div>
+                                    <div class="stepper-label">${labels[s]}</div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
+                    <button class="cancel-ride-btn" onclick="showConfirmModal(${ride.id}, 'cancelled')">
+                        ✕ Cancel This Ride
+                    </button>
+                    <button class="action-btn secondary small" style="margin-top: 8px; width: 100%;" onclick="unclaimRide(${ride.id})">
+                        Release Ride (Unclaim)
+                    </button>
                 `;
             }
+            
+            // Map status to display text
+            const statusDisplay = {
+                available: 'Available',
+                claimed: 'Claimed',
+                enroute: 'En Route',
+                onsite: 'On Site',
+                active: 'Active',
+                completed: 'Completed',
+                cancelled: 'Cancelled',
+                goa: 'Cancelled'
+            };
             
             return `
                 <div class="ride-card status-${status}">
@@ -1653,7 +2187,7 @@
                             <div class="ride-time">${ride.time}</div>
                             <div class="ride-time-label">Pickup Time</div>
                         </div>
-                        <span class="ride-status ${status}">${status}</span>
+                        <span class="ride-status ${status}">${statusDisplay[status] || status}</span>
                     </div>
                     
                     <div class="ride-passenger">
@@ -1723,7 +2257,13 @@
             if (currentFilter === 'all') return ridesList;
             return ridesList.filter(r => {
                 const status = getRideStatus(r);
-                if (currentFilter === 'claimed') return ['claimed', 'enroute'].includes(status);
+                if (currentFilter === 'claimed') {
+                    // Include all in-progress statuses
+                    return ['claimed', 'enroute', 'onsite', 'active'].includes(status);
+                }
+                if (currentFilter === 'goa') {
+                    return status === 'cancelled';
+                }
                 return status === currentFilter;
             });
         }
@@ -1765,11 +2305,59 @@
                 showToast('Please enter your name first', 'error');
                 return;
             }
-            updateRide(rideId, { driver: currentDriver, status: 'claimed' });
+            // When claiming, set to first workflow status
+            updateRide(rideId, { driver: currentDriver, status: 'enroute' });
         }
 
         function unclaimRide(rideId) {
             updateRide(rideId, { driver: '', status: 'available' });
+        }
+
+        // Advance to next status in workflow
+        function advanceStatus(rideId, newStatus) {
+            updateRide(rideId, { status: newStatus });
+        }
+
+        // Modal state
+        let pendingModalAction = null;
+
+        function showConfirmModal(rideId, action) {
+            const modal = document.getElementById('confirm-modal');
+            const icon = document.getElementById('modal-icon');
+            const title = document.getElementById('modal-title');
+            const message = document.getElementById('modal-message');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            
+            pendingModalAction = { rideId, action };
+            
+            if (action === 'completed') {
+                icon.textContent = '✓';
+                title.textContent = 'Complete Ride?';
+                message.textContent = 'Mark this ride as completed? This will remove it from your active rides.';
+                confirmBtn.className = 'modal-btn confirm-complete';
+                confirmBtn.textContent = 'Yes, Complete';
+            } else if (action === 'cancelled') {
+                icon.textContent = '✕';
+                title.textContent = 'Cancel Ride?';
+                message.textContent = 'Are you sure you want to cancel this ride? The dispatcher will be notified.';
+                confirmBtn.className = 'modal-btn confirm-cancel';
+                confirmBtn.textContent = 'Yes, Cancel Ride';
+            }
+            
+            confirmBtn.onclick = confirmModalAction;
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('confirm-modal').classList.remove('show');
+            pendingModalAction = null;
+        }
+
+        function confirmModalAction() {
+            if (pendingModalAction) {
+                updateRide(pendingModalAction.rideId, { status: pendingModalAction.action });
+                closeModal();
+            }
         }
 
         function changeDate(tabName) {
