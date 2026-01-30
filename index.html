@@ -1201,8 +1201,14 @@
                 const url = currentTab 
                     ? `${CONFIG.APPS_SCRIPT_URL}?tab=${encodeURIComponent(currentTab)}`
                     : CONFIG.APPS_SCRIPT_URL;
-                    
-                const response = await fetch(url);
+                
+                // Use no-cors mode isn't an option (can't read response), so we need
+                // to ensure the Apps Script is properly deployed. Adding redirect: follow
+                // helps with Google's auth redirects.
+                const response = await fetch(url, {
+                    method: 'GET',
+                    redirect: 'follow'
+                });
                 const data = await response.json();
                 
                 if (data.success && data.rides) {
