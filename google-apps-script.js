@@ -23,7 +23,7 @@
 // ===========================================
 
 // Version - update this when you deploy a new version
-const SCRIPT_VERSION = '1.10';
+const SCRIPT_VERSION = '1.12';
 
 // Email notifications - set to true to enable, add email addresses to notify
 const EMAIL_CONFIG = {
@@ -62,15 +62,23 @@ const DRIVER_CONFIG = {
 // Adjust these if your columns are in different positions
 const COLUMNS = {
   DRIVER: 1,          // Column A - Driver name
-  STATUS: 2,          // Column B - Completed/GOA status
-  TIME: 3,            // Column C - Time
+  STATUS: 2,          // Column B - Current status
+  TIME: 3,            // Column C - Pickup time
   CONFIRMED: 4,       // Column D - Contacted & Confirmed
   NAME: 5,            // Column E - Passenger name
   PHONE: 6,           // Column F - Contact info
   PICKUP: 7,          // Column G - Starting location
   DROPOFF: 8,         // Column H - Destination
   TYPE: 9,            // Column I - Pick up/Drop off type
-  COMMENTS: 10        // Column J - Comments
+  COMMENTS: 10,       // Column J - Comments
+  // Timestamp columns (K-Q)
+  DRIVER_NOTES: 11,   // Column K - Driver Notes
+  TS_CLAIMED: 12,     // Column L - Claimed timestamp
+  TS_ENROUTE: 13,     // Column M - En Route timestamp
+  TS_ONSITE: 14,      // Column N - On Site timestamp
+  TS_ACTIVE: 15,      // Column O - Active timestamp
+  TS_COMPLETED: 16,   // Column P - Completed timestamp
+  TS_CANCELLED: 17    // Column Q - Cancelled timestamp
 };
 
 // The script auto-detects date tabs based on naming patterns.
@@ -182,9 +190,26 @@ function handleUpdate(e, spreadsheet) {
       return createResponse({ success: false, error: 'Invalid ride ID: ' + rideId });
     }
     
+    // Get current timestamp for status changes
+    const now = new Date();
+    const timestamp = Utilities.formatDate(now, Session.getScriptTimeZone(), 'M/d/yy h:mm a');
+    
     // Apply each update
     if (updates.driver !== undefined) {
       sheet.getRange(row, COLUMNS.DRIVER).setValue(updates.driver);
+      
+      // If claiming (driver set and not empty), record claimed timestamp
+      if (updates.driver) {
+        sheet.getRange(row, COLUMNS.TS_CLAIMED).setValue(timestamp);
+      } else {
+        // Unclaiming - clear all timestamps
+        sheet.getRange(row, COLUMNS.TS_CLAIMED).setValue('');
+        sheet.getRange(row, COLUMNS.TS_ENROUTE).setValue('');
+        sheet.getRange(row, COLUMNS.TS_ONSITE).setValue('');
+        sheet.getRange(row, COLUMNS.TS_ACTIVE).setValue('');
+        sheet.getRange(row, COLUMNS.TS_COMPLETED).setValue('');
+        sheet.getRange(row, COLUMNS.TS_CANCELLED).setValue('');
+      }
       
       // Send email notification if a driver just claimed the ride
       if (updates.driver && EMAIL_CONFIG.enabled && EMAIL_CONFIG.notifyOnClaim) {
@@ -204,7 +229,7 @@ function handleUpdate(e, spreadsheet) {
       const statusMap = {
         'available': '',           // Clear status
         'enroute': 'En Route',
-        'onsite': 'OnSite',
+        'onsite': 'On Site',
         'active': 'Active',
         'completed': 'Completed',
         'cancelled': 'Cancelled',
@@ -216,10 +241,29 @@ function handleUpdate(e, spreadsheet) {
         : updates.status;  // Pass through if not in map
         
       sheet.getRange(row, COLUMNS.STATUS).setValue(statusValue);
+      
+      // Write timestamp to appropriate column
+      const timestampColumns = {
+        'enroute': COLUMNS.TS_ENROUTE,
+        'onsite': COLUMNS.TS_ONSITE,
+        'active': COLUMNS.TS_ACTIVE,
+        'completed': COLUMNS.TS_COMPLETED,
+        'cancelled': COLUMNS.TS_CANCELLED,
+        'goa': COLUMNS.TS_CANCELLED
+      };
+      
+      if (timestampColumns[updates.status]) {
+        sheet.getRange(row, timestampColumns[updates.status]).setValue(timestamp);
+      }
     }
     
     if (updates.confirmed !== undefined) {
       sheet.getRange(row, COLUMNS.CONFIRMED).setValue(updates.confirmed ? 'Yes' : '');
+    }
+    
+    // Handle driver notes
+    if (updates.driverNotes !== undefined) {
+      sheet.getRange(row, COLUMNS.DRIVER_NOTES).setValue(updates.driverNotes);
     }
     
     // Log the update
@@ -499,7 +543,8 @@ function getRidesFromSheet(sheet) {
       pickup: row[COLUMNS.PICKUP - 1] ? row[COLUMNS.PICKUP - 1].toString() : '',
       dropoff: row[COLUMNS.DROPOFF - 1] ? row[COLUMNS.DROPOFF - 1].toString() : '',
       type: row[COLUMNS.TYPE - 1] ? row[COLUMNS.TYPE - 1].toString() : '',
-      comments: row[COLUMNS.COMMENTS - 1] ? row[COLUMNS.COMMENTS - 1].toString() : ''
+      comments: row[COLUMNS.COMMENTS - 1] ? row[COLUMNS.COMMENTS - 1].toString() : '',
+      driverNotes: row[COLUMNS.DRIVER_NOTES - 1] ? row[COLUMNS.DRIVER_NOTES - 1].toString() : ''
     };
   }).filter(r => r !== null);
   
@@ -519,7 +564,7 @@ function parseStatus(statusValue, driverValue) {
   
   // Workflow statuses
   if (lower === 'en route' || lower === 'enroute') return 'enroute';
-  if (lower === 'onsite' || lower === 'on site') return 'onsite';
+  if (lower === 'on site' || lower === 'onsite') return 'onsite';
   if (lower === 'active') return 'active';
   if (lower === 'completed' || lower === 'done') return 'completed';
   if (lower === 'cancelled' || lower === 'canceled') return 'cancelled';
