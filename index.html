@@ -1136,7 +1136,7 @@
     </main>
 
     <footer class="app-footer">
-        <span>App v<span id="app-version">1.05</span></span>
+        <span>App v<span id="app-version">1.06</span></span>
         <span id="script-version-display"></span>
     </footer>
 
@@ -1391,15 +1391,33 @@
                 try {
                     showToast('Saving...', 'success');
                     
-                    // Use a hidden form + iframe to handle CORS with Google Apps Script
-                    const payload = { rideId, updates, tab: currentTab };
-                    await postToAppsScript(payload);
+                    // Use GET with parameters - more reliable with Google Apps Script CORS
+                    const params = new URLSearchParams({
+                        action: 'update',
+                        rideId: rideId,
+                        tab: currentTab || '',
+                        updates: JSON.stringify(updates)
+                    });
                     
-                    // Wait a moment for the write to complete, then refresh
-                    setTimeout(async () => {
-                        await refreshData();
+                    const url = `${CONFIG.APPS_SCRIPT_URL}?${params.toString()}`;
+                    
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        redirect: 'follow'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        if (data.rides) {
+                            rides = data.rides;
+                            renderAll();
+                        }
                         showToast('Saved!', 'success');
-                    }, 1500);
+                    } else {
+                        showToast(data.error || 'Save failed', 'error');
+                        refreshData();
+                    }
                     
                 } catch (error) {
                     console.error('Error updating ride:', error);
@@ -1409,45 +1427,6 @@
             } else {
                 showToast('Updated (demo mode)', 'success');
             }
-        }
-        
-        // Post to Google Apps Script using a hidden form (avoids CORS issues)
-        function postToAppsScript(data) {
-            return new Promise((resolve) => {
-                // Create a hidden iframe to receive the response
-                const iframeName = 'gas-post-' + Date.now();
-                const iframe = document.createElement('iframe');
-                iframe.name = iframeName;
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
-                
-                // Create a hidden form
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = CONFIG.APPS_SCRIPT_URL;
-                form.target = iframeName;
-                form.style.display = 'none';
-                
-                // Add the data as a hidden field
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'payload';
-                input.value = JSON.stringify(data);
-                form.appendChild(input);
-                
-                document.body.appendChild(form);
-                
-                // Clean up after submission
-                iframe.onload = () => {
-                    setTimeout(() => {
-                        document.body.removeChild(iframe);
-                        document.body.removeChild(form);
-                        resolve();
-                    }, 100);
-                };
-                
-                form.submit();
-            });
         }
 
         async function refreshData() {
