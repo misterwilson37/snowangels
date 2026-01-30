@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1877F2">
-    <title>Snow Angels Dispatch 1.11</title>
+    <title>Snow Angels Dispatch 1.12</title>
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -913,6 +913,84 @@
             color: var(--blue-primary);
         }
 
+        /* Driver Notes */
+        .driver-notes-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .driver-notes-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: none;
+            color: var(--gray-600);
+            font-family: inherit;
+            font-size: 13px;
+            cursor: pointer;
+            padding: 4px 0;
+        }
+
+        .driver-notes-toggle:hover {
+            color: var(--blue-primary);
+        }
+
+        .driver-notes-input {
+            width: 100%;
+            margin-top: 8px;
+            padding: 10px;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .driver-notes-input:focus {
+            outline: none;
+            border-color: var(--blue-primary);
+        }
+
+        .driver-notes-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .driver-notes-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .driver-notes-btn.save {
+            background: var(--blue-primary);
+            color: white;
+        }
+
+        .driver-notes-btn.cancel {
+            background: var(--gray-100);
+            color: var(--gray-600);
+        }
+
+        .driver-notes-display {
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: var(--gray-50);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            color: var(--gray-700);
+            white-space: pre-wrap;
+        }
+
         /* Confirmation Modal */
         .modal-overlay {
             display: none;
@@ -1631,7 +1709,7 @@
     </main>
 
     <footer class="app-footer">
-        <span>App v<span id="app-version">1.11</span></span>
+        <span>App v<span id="app-version">1.12</span></span>
         <span id="script-version-display"></span>
     </footer>
 
@@ -2203,6 +2281,25 @@
                             ↩ Release
                         </button>
                     </div>
+                    <div class="driver-notes-section">
+                        ${ride.driverNotes ? `
+                            <button class="driver-notes-toggle" onclick="toggleNotesEdit(${ride.id})">
+                                📝 Notes (tap to edit)
+                            </button>
+                            <div class="driver-notes-display" id="notes-display-${ride.id}">${escapeHtml(ride.driverNotes)}</div>
+                        ` : `
+                            <button class="driver-notes-toggle" onclick="toggleNotesEdit(${ride.id})">
+                                📝 Add notes...
+                            </button>
+                        `}
+                        <div id="notes-editor-${ride.id}" style="display: none;">
+                            <textarea class="driver-notes-input" id="notes-input-${ride.id}" placeholder="Add notes about this ride...">${escapeHtml(ride.driverNotes || '')}</textarea>
+                            <div class="driver-notes-actions">
+                                <button class="driver-notes-btn cancel" onclick="toggleNotesEdit(${ride.id})">Cancel</button>
+                                <button class="driver-notes-btn save" onclick="saveDriverNotes(${ride.id})">Save</button>
+                            </div>
+                        </div>
+                    </div>
                 `;
             }
             
@@ -2354,6 +2451,28 @@
         // Advance to next status in workflow
         function advanceStatus(rideId, newStatus) {
             updateRide(rideId, { status: newStatus });
+        }
+
+        // Driver notes functions
+        function toggleNotesEdit(rideId) {
+            const editor = document.getElementById(`notes-editor-${rideId}`);
+            const display = document.getElementById(`notes-display-${rideId}`);
+            const toggle = editor.previousElementSibling?.previousElementSibling;
+            
+            if (editor.style.display === 'none') {
+                editor.style.display = 'block';
+                if (display) display.style.display = 'none';
+                document.getElementById(`notes-input-${rideId}`).focus();
+            } else {
+                editor.style.display = 'none';
+                if (display) display.style.display = 'block';
+            }
+        }
+
+        function saveDriverNotes(rideId) {
+            const input = document.getElementById(`notes-input-${rideId}`);
+            const notes = input.value.trim();
+            updateRide(rideId, { driverNotes: notes });
         }
 
         // Modal state
