@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1877F2">
-    <title>Snow Angels Dispatch 1.12</title>
+    <title>Snow Angels Dispatch 1.13</title>
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1086,19 +1086,20 @@
         /* Quick Actions adjustment */
         .quick-actions {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
             margin-top: 12px;
         }
 
         .quick-action {
-            padding: 14px;
+            padding: 12px 8px;
             border-radius: var(--radius-sm);
             text-align: center;
             text-decoration: none;
             font-weight: 600;
-            font-size: 13px;
+            font-size: 12px;
             transition: all 0.2s ease;
+            cursor: pointer;
         }
 
         .quick-action.call {
@@ -1106,7 +1107,8 @@
             color: var(--blue-primary);
         }
 
-        .quick-action.call:hover {
+        .quick-action.call:hover,
+        .quick-action.call:active {
             background: var(--blue-primary);
             color: var(--white);
         }
@@ -1116,7 +1118,8 @@
             color: #047857;
         }
 
-        .quick-action.navigate:hover {
+        .quick-action.navigate:hover,
+        .quick-action.navigate:active {
             background: var(--status-enroute);
             color: var(--white);
         }
@@ -1709,7 +1712,7 @@
     </main>
 
     <footer class="app-footer">
-        <span>App v<span id="app-version">1.12</span></span>
+        <span>App v<span id="app-version">1.13</span></span>
         <span id="script-version-display"></span>
     </footer>
 
@@ -2213,7 +2216,6 @@
 
         function renderRideCard(ride, context) {
             const status = getRideStatus(ride);
-            const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(ride.pickup)}&destination=${encodeURIComponent(ride.dropoff)}`;
             
             let actions = '';
             
@@ -2232,7 +2234,9 @@
                 actions = `
                     <div class="quick-actions">
                         <a href="tel:${ride.phone}" class="quick-action call">📞 Call</a>
-                        <a href="${mapsUrl}" target="_blank" class="quick-action navigate">🗺️ Navigate</a>
+                        <a href="#" onclick="navigateTo('${escapeHtml(ride.pickup).replace(/'/g, "\\'")}'); return false;" class="quick-action navigate">📍 Pickup</a>
+                        <a href="#" onclick="navigateTo('${escapeHtml(ride.dropoff).replace(/'/g, "\\'")}'); return false;" class="quick-action navigate">🏁 Dropoff</a>
+                    </div>
                     </div>
                     <div class="status-stepper">
                         ${STATUS_ORDER.map((s, idx) => {
@@ -2473,6 +2477,27 @@
             const input = document.getElementById(`notes-input-${rideId}`);
             const notes = input.value.trim();
             updateRide(rideId, { driverNotes: notes });
+        }
+
+        // Universal navigation - opens in user's preferred maps app
+        function navigateTo(address) {
+            const encoded = encodeURIComponent(address);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isAndroid = /Android/.test(navigator.userAgent);
+            
+            if (isIOS) {
+                // iOS: maps: URL opens Apple Maps, but if user has set
+                // a different default or taps "Open in..." they get choice
+                // Using apple maps URL scheme with address search
+                window.location.href = `maps://maps.apple.com/?q=${encoded}`;
+            } else if (isAndroid) {
+                // Android: geo: URL triggers the system app picker
+                // User chooses Waze, Google Maps, etc.
+                window.location.href = `geo:0,0?q=${encoded}`;
+            } else {
+                // Desktop fallback
+                window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
+            }
         }
 
         // Modal state
