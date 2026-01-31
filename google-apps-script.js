@@ -23,23 +23,286 @@
 // ===========================================
 
 // Version - update this when you deploy a new version
-const SCRIPT_VERSION = '1.15';
+const SCRIPT_VERSION = '1.17';
 
 // Latest app version - update this when you deploy new HTML
 // This tells older app versions that an update is available
-const LATEST_APP_VERSION = '1.15';
+const LATEST_APP_VERSION = '1.17';
 
-// Email notifications - set to true to enable, add email addresses to notify
-const EMAIL_CONFIG = {
-  enabled: false,  // Set to true to enable email notifications
-  notifyOnNewRide: true,  // Email when a new ride request comes in via form
-  notifyOnClaim: false,    // Email when a driver claims a ride
-  recipients: [
-    // Add email addresses here, e.g.:
-    // 'dispatcher1@example.com',
-    // 'dispatcher2@example.com'
-  ]
+// Settings tab name - where email preferences are stored
+const SETTINGS_TAB_NAME = '⚙️ Settings';
+
+// Default email settings (used if Settings tab doesn't exist yet)
+const DEFAULT_EMAIL_SETTINGS = {
+  enabled: false,
+  notifyOnNewRide: true,
+  recipientsNewRide: '',      // Separate recipients for new ride alerts
+  notifyOnClaim: false,
+  recipientsClaim: '',        // Separate recipients for claim alerts
+  notifyOnRelease: true,
+  recipientsRelease: ''       // Separate recipients for release alerts
 };
+
+// Setting descriptions for the Settings tab
+const SETTING_DESCRIPTIONS = {
+  enabled: 'Master switch - set to TRUE to enable all email notifications',
+  notifyOnNewRide: 'Send email when a new ride request is submitted via Google Form',
+  recipientsNewRide: 'Email addresses for new ride alerts (comma-separated)',
+  notifyOnClaim: 'Send email when a driver claims a ride',
+  recipientsClaim: 'Email addresses for claim alerts (comma-separated)',
+  notifyOnRelease: 'Send email when a driver releases/unclaims a ride',
+  recipientsRelease: 'Email addresses for release alerts (comma-separated)'
+};
+
+/**
+ * Adds custom menu to spreadsheet when opened
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('❄️ Snow Angels')
+    .addItem('📧 Email Settings...', 'showEmailSettingsDialog')
+    .addSeparator()
+    .addItem('✉️ Send Test Email', 'testEmailNotification')
+    .addSeparator()
+    .addItem('📋 View Current Settings', 'showCurrentSettings')
+    .addItem('🔄 Reset to Defaults', 'resetEmailSettings')
+    .addToUi();
+}
+
+/**
+ * Shows a dialog to configure email settings
+ */
+function showEmailSettingsDialog() {
+  const settings = getEmailSettings();
+  
+  const html = HtmlService.createHtmlOutput(`
+    <style>
+      body { font-family: Arial, sans-serif; padding: 15px; font-size: 13px; }
+      h3 { margin-top: 0; color: #1877F2; }
+      h4 { margin: 20px 0 10px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+      label { display: block; margin: 8px 0 4px; font-weight: bold; }
+      input[type="text"] { width: 100%; padding: 8px; box-sizing: border-box; font-size: 12px; }
+      .checkbox-row { display: flex; align-items: center; margin: 8px 0; }
+      .checkbox-row input { margin-right: 8px; width: 18px; height: 18px; }
+      .help { font-size: 11px; color: #666; margin-top: 2px; font-style: italic; }
+      .buttons { margin-top: 20px; text-align: right; }
+      button { padding: 10px 20px; margin-left: 8px; cursor: pointer; }
+      .save { background: #1877F2; color: white; border: none; border-radius: 4px; }
+      .cancel { background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; }
+      .status { padding: 8px; border-radius: 4px; margin-bottom: 15px; font-size: 12px; }
+      .status.on { background: #d4edda; color: #155724; }
+      .status.off { background: #f8d7da; color: #721c24; }
+      .section { background: #f9f9f9; padding: 10px; border-radius: 4px; margin: 10px 0; }
+      .indent { margin-left: 26px; }
+    </style>
+    
+    <h3>📧 Email Notification Settings</h3>
+    
+    <div class="status ${settings.enabled ? 'on' : 'off'}">
+      Notifications are currently <strong>${settings.enabled ? 'ON' : 'OFF'}</strong>
+    </div>
+    
+    <div class="checkbox-row">
+      <input type="checkbox" id="enabled" ${settings.enabled ? 'checked' : ''}>
+      <span><strong>Enable email notifications</strong></span>
+    </div>
+    <div class="help indent">Master switch - uncheck to disable all notifications</div>
+    
+    <h4>🆕 New Ride Requests</h4>
+    <div class="section">
+      <div class="checkbox-row">
+        <input type="checkbox" id="notifyOnNewRide" ${settings.notifyOnNewRide ? 'checked' : ''}>
+        <span>Send alert when form is submitted</span>
+      </div>
+      <label>Recipients:</label>
+      <input type="text" id="recipientsNewRide" value="${settings.recipientsNewRide || ''}" 
+             placeholder="dispatcher@example.com, manager@example.com">
+      <div class="help">Separate multiple email addresses with commas</div>
+    </div>
+    
+    <h4>🚗 Driver Claims Ride</h4>
+    <div class="section">
+      <div class="checkbox-row">
+        <input type="checkbox" id="notifyOnClaim" ${settings.notifyOnClaim ? 'checked' : ''}>
+        <span>Send alert when driver claims a ride</span>
+      </div>
+      <label>Recipients:</label>
+      <input type="text" id="recipientsClaim" value="${settings.recipientsClaim || ''}" 
+             placeholder="dispatcher@example.com">
+      <div class="help">Separate multiple email addresses with commas</div>
+    </div>
+    
+    <h4>⚠️ Driver Releases Ride</h4>
+    <div class="section">
+      <div class="checkbox-row">
+        <input type="checkbox" id="notifyOnRelease" ${settings.notifyOnRelease ? 'checked' : ''}>
+        <span>Send alert when driver releases a ride</span>
+      </div>
+      <label>Recipients:</label>
+      <input type="text" id="recipientsRelease" value="${settings.recipientsRelease || ''}" 
+             placeholder="dispatcher@example.com, backup@example.com">
+      <div class="help">Separate multiple email addresses with commas</div>
+    </div>
+    
+    <div class="buttons">
+      <button class="cancel" onclick="google.script.host.close()">Cancel</button>
+      <button class="save" onclick="saveSettings()">Save Settings</button>
+    </div>
+    
+    <script>
+      function saveSettings() {
+        const settings = {
+          enabled: document.getElementById('enabled').checked,
+          notifyOnNewRide: document.getElementById('notifyOnNewRide').checked,
+          recipientsNewRide: document.getElementById('recipientsNewRide').value.trim(),
+          notifyOnClaim: document.getElementById('notifyOnClaim').checked,
+          recipientsClaim: document.getElementById('recipientsClaim').value.trim(),
+          notifyOnRelease: document.getElementById('notifyOnRelease').checked,
+          recipientsRelease: document.getElementById('recipientsRelease').value.trim()
+        };
+        google.script.run
+          .withSuccessHandler(() => {
+            alert('Settings saved!');
+            google.script.host.close();
+          })
+          .withFailureHandler((err) => alert('Error: ' + err))
+          .saveEmailSettings(settings);
+      }
+    </script>
+  `)
+  .setWidth(450)
+  .setHeight(580);
+  
+  SpreadsheetApp.getUi().showModalDialog(html, 'Email Settings');
+}
+
+/**
+ * Shows current settings in an alert
+ */
+function showCurrentSettings() {
+  const settings = getEmailSettings();
+  const ui = SpreadsheetApp.getUi();
+  
+  const status = settings.enabled ? '✅ ON' : '❌ OFF';
+  
+  let details = [];
+  details.push(`Master Switch: ${status}`);
+  details.push('');
+  details.push('🆕 New Ride Requests:');
+  details.push(`   Enabled: ${settings.notifyOnNewRide ? 'Yes' : 'No'}`);
+  details.push(`   Recipients: ${settings.recipientsNewRide || '(none)'}`);
+  details.push('');
+  details.push('🚗 Driver Claims:');
+  details.push(`   Enabled: ${settings.notifyOnClaim ? 'Yes' : 'No'}`);
+  details.push(`   Recipients: ${settings.recipientsClaim || '(none)'}`);
+  details.push('');
+  details.push('⚠️ Driver Releases:');
+  details.push(`   Enabled: ${settings.notifyOnRelease ? 'Yes' : 'No'}`);
+  details.push(`   Recipients: ${settings.recipientsRelease || '(none)'}`);
+  
+  ui.alert('Current Email Settings', details.join('\n'), ui.ButtonSet.OK);
+}
+
+/**
+ * Gets email settings from the Settings tab (or creates it with defaults)
+ */
+function getEmailSettings() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let settingsSheet = spreadsheet.getSheetByName(SETTINGS_TAB_NAME);
+  
+  // Create settings tab if it doesn't exist
+  if (!settingsSheet) {
+    settingsSheet = spreadsheet.insertSheet(SETTINGS_TAB_NAME);
+    
+    // Set up headers
+    settingsSheet.getRange('A1:C1').setValues([['Setting', 'Value', 'Description']]);
+    settingsSheet.getRange('A1:C1').setFontWeight('bold').setBackground('#e8e8e8');
+    
+    // Add all settings with descriptions
+    const settingRows = Object.keys(DEFAULT_EMAIL_SETTINGS).map(key => [
+      key,
+      DEFAULT_EMAIL_SETTINGS[key],
+      SETTING_DESCRIPTIONS[key] || ''
+    ]);
+    settingsSheet.getRange(2, 1, settingRows.length, 3).setValues(settingRows);
+    
+    // Format columns
+    settingsSheet.setColumnWidth(1, 160);
+    settingsSheet.setColumnWidth(2, 300);
+    settingsSheet.setColumnWidth(3, 350);
+    
+    // Make description column italic and gray
+    settingsSheet.getRange(2, 3, settingRows.length, 1)
+      .setFontStyle('italic')
+      .setFontColor('#666666');
+    
+    // Freeze header row
+    settingsSheet.setFrozenRows(1);
+    
+    // Move to end
+    spreadsheet.setActiveSheet(settingsSheet);
+    spreadsheet.moveActiveSheet(spreadsheet.getNumSheets());
+  }
+  
+  // Read settings from sheet
+  const lastRow = settingsSheet.getLastRow();
+  if (lastRow < 2) return DEFAULT_EMAIL_SETTINGS;
+  
+  const data = settingsSheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  const settings = {};
+  data.forEach(row => {
+    if (row[0]) {
+      let value = row[1];
+      // Convert string 'true'/'false' to boolean
+      if (value === true || value === 'true' || value === 'TRUE') value = true;
+      else if (value === false || value === 'false' || value === 'FALSE') value = false;
+      settings[row[0]] = value;
+    }
+  });
+  
+  // Merge with defaults for any missing settings
+  return { ...DEFAULT_EMAIL_SETTINGS, ...settings };
+}
+
+/**
+ * Saves email settings to the Settings tab
+ */
+function saveEmailSettings(settings) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let settingsSheet = spreadsheet.getSheetByName(SETTINGS_TAB_NAME);
+  
+  if (!settingsSheet) {
+    // Create it first by calling getEmailSettings
+    getEmailSettings();
+    settingsSheet = spreadsheet.getSheetByName(SETTINGS_TAB_NAME);
+  }
+  
+  // Build the values array in the correct order
+  const settingKeys = Object.keys(DEFAULT_EMAIL_SETTINGS);
+  const values = settingKeys.map(key => [settings[key] !== undefined ? settings[key] : DEFAULT_EMAIL_SETTINGS[key]]);
+  
+  // Write settings (just column B, preserving A and C)
+  settingsSheet.getRange(2, 2, values.length, 1).setValues(values);
+  
+  return true;
+}
+
+/**
+ * Resets email settings to defaults
+ */
+function resetEmailSettings() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert(
+    'Reset Settings?',
+    'This will reset all email settings to defaults. Continue?',
+    ui.ButtonSet.YES_NO
+  );
+  
+  if (response === ui.Button.YES) {
+    saveEmailSettings(DEFAULT_EMAIL_SETTINGS);
+    ui.alert('Settings reset to defaults.');
+  }
+}
 
 // Driver list configuration
 // Option 1: Pull from a specific tab (set tabName)
@@ -201,23 +464,16 @@ function handleUpdate(e, spreadsheet) {
     
     // Apply each update
     if (updates.driver !== undefined) {
+      // Get the previous driver name before updating (for release notification)
+      const previousDriver = sheet.getRange(row, COLUMNS.DRIVER).getValue();
+      
       sheet.getRange(row, COLUMNS.DRIVER).setValue(updates.driver);
       
       // If claiming (driver set and not empty), record claimed timestamp
       if (updates.driver) {
         sheet.getRange(row, COLUMNS.TS_CLAIMED).setValue(timestamp);
-      } else {
-        // Unclaiming - clear all timestamps
-        sheet.getRange(row, COLUMNS.TS_CLAIMED).setValue('');
-        sheet.getRange(row, COLUMNS.TS_ENROUTE).setValue('');
-        sheet.getRange(row, COLUMNS.TS_ONSITE).setValue('');
-        sheet.getRange(row, COLUMNS.TS_ACTIVE).setValue('');
-        sheet.getRange(row, COLUMNS.TS_COMPLETED).setValue('');
-        sheet.getRange(row, COLUMNS.TS_CANCELLED).setValue('');
-      }
-      
-      // Send email notification if a driver just claimed the ride
-      if (updates.driver && EMAIL_CONFIG.enabled && EMAIL_CONFIG.notifyOnClaim) {
+        
+        // Send claim notification
         const rideData = sheet.getRange(row, 1, 1, 10).getValues()[0];
         sendClaimNotification(updates.driver, {
           name: rideData[COLUMNS.NAME - 1],
@@ -226,6 +482,26 @@ function handleUpdate(e, spreadsheet) {
           dropoff: rideData[COLUMNS.DROPOFF - 1],
           time: rideData[COLUMNS.TIME - 1]
         }, sheet.getName());
+      } else {
+        // Unclaiming/releasing - clear all timestamps
+        sheet.getRange(row, COLUMNS.TS_CLAIMED).setValue('');
+        sheet.getRange(row, COLUMNS.TS_ENROUTE).setValue('');
+        sheet.getRange(row, COLUMNS.TS_ONSITE).setValue('');
+        sheet.getRange(row, COLUMNS.TS_ACTIVE).setValue('');
+        sheet.getRange(row, COLUMNS.TS_COMPLETED).setValue('');
+        sheet.getRange(row, COLUMNS.TS_CANCELLED).setValue('');
+        
+        // Send release notification if there was a previous driver
+        if (previousDriver) {
+          const rideData = sheet.getRange(row, 1, 1, 10).getValues()[0];
+          sendReleaseNotification(previousDriver, {
+            name: rideData[COLUMNS.NAME - 1],
+            phone: rideData[COLUMNS.PHONE - 1],
+            pickup: rideData[COLUMNS.PICKUP - 1],
+            dropoff: rideData[COLUMNS.DROPOFF - 1],
+            time: rideData[COLUMNS.TIME - 1]
+          }, sheet.getName());
+        }
       }
     }
     
@@ -614,10 +890,21 @@ function createResponse(data) {
 // ===========================================
 
 /**
+ * Helper to parse comma-separated email string into array
+ */
+function parseRecipients(recipientString) {
+  if (!recipientString) return [];
+  return recipientString.split(',').map(e => e.trim()).filter(e => e);
+}
+
+/**
  * Send notification when a driver claims a ride
  */
 function sendClaimNotification(driverName, ride, tabName) {
-  if (!EMAIL_CONFIG.enabled || EMAIL_CONFIG.recipients.length === 0) return;
+  const settings = getEmailSettings();
+  const recipients = parseRecipients(settings.recipientsClaim);
+  
+  if (!settings.enabled || !settings.notifyOnClaim || recipients.length === 0) return;
   
   try {
     const subject = `🚗 Snow Angels: ${driverName} claimed a ride`;
@@ -636,13 +923,51 @@ Tab: ${tabName}
 Snow Angels Dispatch System
     `.trim();
     
-    EMAIL_CONFIG.recipients.forEach(email => {
+    recipients.forEach(email => {
       MailApp.sendEmail(email, subject, body);
     });
     
-    console.log(`Claim notification sent to ${EMAIL_CONFIG.recipients.length} recipients`);
+    console.log(`Claim notification sent to ${recipients.length} recipients`);
   } catch (error) {
     console.error('Failed to send claim notification:', error);
+  }
+}
+
+/**
+ * Send notification when a driver releases/unclaims a ride
+ */
+function sendReleaseNotification(driverName, ride, tabName) {
+  const settings = getEmailSettings();
+  const recipients = parseRecipients(settings.recipientsRelease);
+  
+  if (!settings.enabled || !settings.notifyOnRelease || recipients.length === 0) return;
+  
+  try {
+    const subject = `⚠️ Snow Angels: ${driverName} released a ride`;
+    const body = `
+Driver ${driverName} has RELEASED a ride back to the queue:
+
+Passenger: ${ride.name}
+Phone: ${ride.phone}
+Time: ${ride.time}
+Pickup: ${ride.pickup}
+Dropoff: ${ride.dropoff}
+
+This ride is now available for another driver.
+
+Tab: ${tabName}
+
+---
+Snow Angels Dispatch System
+    `.trim();
+    
+    recipients.forEach(email => {
+      MailApp.sendEmail(email, subject, body);
+    });
+    
+    console.log(`Release notification sent to ${recipients.length} recipients`);
+  } catch (error) {
+    console.error('Failed to send release notification:', error);
   }
 }
 
@@ -657,7 +982,10 @@ Snow Angels Dispatch System
  * 5. Event type: On form submit
  */
 function onFormSubmit(e) {
-  if (!EMAIL_CONFIG.enabled || !EMAIL_CONFIG.notifyOnNewRide || EMAIL_CONFIG.recipients.length === 0) return;
+  const settings = getEmailSettings();
+  const recipients = parseRecipients(settings.recipientsNewRide);
+  
+  if (!settings.enabled || !settings.notifyOnNewRide || recipients.length === 0) return;
   
   try {
     const values = e.values;
@@ -672,11 +1000,11 @@ ${values.join('\n')}
 Snow Angels Dispatch System
     `.trim();
     
-    EMAIL_CONFIG.recipients.forEach(email => {
+    recipients.forEach(email => {
       MailApp.sendEmail(email, subject, body);
     });
     
-    console.log(`New ride notification sent to ${EMAIL_CONFIG.recipients.length} recipients`);
+    console.log(`New ride notification sent to ${recipients.length} recipients`);
   } catch (error) {
     console.error('Failed to send new ride notification:', error);
   }
@@ -684,11 +1012,26 @@ Snow Angels Dispatch System
 
 /**
  * Test function - sends a test email to verify configuration
- * Run this manually from the Apps Script editor to test email setup
+ * Run this from the Snow Angels menu or Apps Script editor
  */
 function testEmailNotification() {
-  if (EMAIL_CONFIG.recipients.length === 0) {
-    console.log('No recipients configured. Add email addresses to EMAIL_CONFIG.recipients');
+  const settings = getEmailSettings();
+  
+  // Gather all unique recipients from all three notification types
+  const allRecipients = new Set();
+  parseRecipients(settings.recipientsNewRide).forEach(e => allRecipients.add(e));
+  parseRecipients(settings.recipientsClaim).forEach(e => allRecipients.add(e));
+  parseRecipients(settings.recipientsRelease).forEach(e => allRecipients.add(e));
+  
+  const recipients = Array.from(allRecipients);
+  
+  if (recipients.length === 0) {
+    SpreadsheetApp.getUi().alert(
+      'No Recipients',
+      'Please add at least one email address in the Email Settings first.\n\n' +
+      'Go to: ❄️ Snow Angels → 📧 Email Settings...',
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
     return;
   }
   
@@ -698,12 +1041,37 @@ This is a test email from the Snow Angels Dispatch System.
 
 If you received this, email notifications are working correctly!
 
+Current Settings:
+- Master Switch: ${settings.enabled ? 'ON' : 'OFF'}
+
+- New ride alerts: ${settings.notifyOnNewRide ? 'Yes' : 'No'}
+  Recipients: ${settings.recipientsNewRide || '(none)'}
+
+- Driver claim alerts: ${settings.notifyOnClaim ? 'Yes' : 'No'}
+  Recipients: ${settings.recipientsClaim || '(none)'}
+
+- Driver release alerts: ${settings.notifyOnRelease ? 'Yes' : 'No'}
+  Recipients: ${settings.recipientsRelease || '(none)'}
+
 Script Version: ${SCRIPT_VERSION}
 Timestamp: ${new Date().toISOString()}
   `.trim();
   
-  EMAIL_CONFIG.recipients.forEach(email => {
-    MailApp.sendEmail(email, subject, body);
-    console.log(`Test email sent to ${email}`);
-  });
+  try {
+    recipients.forEach(email => {
+      MailApp.sendEmail(email, subject, body);
+    });
+    
+    SpreadsheetApp.getUi().alert(
+      'Test Email Sent',
+      `Test email sent to:\n${recipients.join('\n')}`,
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  } catch (error) {
+    SpreadsheetApp.getUi().alert(
+      'Error',
+      'Failed to send test email: ' + error.toString(),
+      SpreadsheetApp.getUi().ButtonSet.OK
+    );
+  }
 }
