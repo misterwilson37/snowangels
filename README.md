@@ -137,7 +137,58 @@ After making changes to the script:
 
 ## Email Notifications
 
-### New Ride Notifications (Form Submit)
+### Configuring via Spreadsheet Menu (Recommended)
+
+The easiest way to configure email notifications:
+
+1. Open your Google Sheet
+2. Look for the **❄️ Snow Angels** menu in the menu bar
+3. Click **📧 Email Settings...**
+4. In the dialog:
+   - Check **Enable email notifications** (master switch)
+   - For each notification type, you can:
+     - Enable/disable the notification
+     - Set **separate recipient lists** (different people can get different alerts!)
+   - Notification types:
+     - **New ride request** - when someone submits the Google Form
+     - **Driver claims a ride** - when a driver claims a ride
+     - **Driver releases a ride** - when a driver unclaims/releases a ride back to the queue
+5. Click **Save Settings**
+
+**Tip:** Separate multiple email addresses with commas, e.g., `dispatcher@example.com, backup@example.com`
+
+### Menu Options
+
+| Menu Item | Description |
+|-----------|-------------|
+| 📧 Email Settings... | Opens the settings dialog |
+| ✉️ Send Test Email | Sends a test to ALL configured recipients |
+| 📋 View Current Settings | Shows current configuration |
+| 🔄 Reset to Defaults | Resets all settings to defaults |
+
+### Settings Storage
+
+Settings are stored in a **⚙️ Settings** tab that's automatically created in your spreadsheet. The tab has three columns:
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| enabled | TRUE | Master switch - set to TRUE to enable... |
+| notifyOnNewRide | TRUE | Send email when a new ride request... |
+| recipientsNewRide | email@example.com | Email addresses for new ride alerts... |
+| ... | ... | ... |
+
+You can edit settings directly in this tab if you prefer.
+
+### Who Sends the Emails?
+
+Emails come from whoever deployed the Apps Script (the person who set "Execute as: Me" during deployment). If you deployed it, emails come from your Google account.
+
+To have emails come from the organization's account:
+1. Have the organization owner copy the script to their own Apps Script
+2. They deploy it with "Execute as: Me"
+3. Update the app to use their script URL
+
+### New Ride Notifications (Form Submit Trigger)
 
 To get emailed when someone submits a ride request via Google Form:
 
@@ -150,9 +201,7 @@ To get emailed when someone submits a ride request via Google Form:
 4. Click **Save**
 5. Authorize if prompted
 
-### Testing Email
-
-Run the `testEmailNotification()` function from the Apps Script editor to verify emails are working.
+**Note:** The form trigger must be set up manually - the menu settings just control whether the notification is sent and who receives it.
 
 ---
 
@@ -303,7 +352,20 @@ When you deploy new HTML, update `LATEST_APP_VERSION` in the script to match. Us
 
 ## Version History
 
-### v1.15 (Current)
+### v1.17 (Current)
+- **Separate recipient lists** for each notification type (new ride, claim, release)
+- Each notification type can now go to different people
+- Improved help text in settings dialog
+- Settings tab includes description column explaining each setting
+
+### v1.16
+- Added **❄️ Snow Angels** menu in spreadsheet for easy email configuration
+- Email settings now stored in a **⚙️ Settings** tab (no code editing needed!)
+- Added **release notification** - dispatchers can be alerted when a driver unclaims a ride
+- Settings dialog with checkboxes for each notification type
+- Test email function accessible from menu
+
+### v1.15
 - Claiming ride no longer auto-sets "En Route" - drivers can batch-claim multiple rides
 - Stepper shows "En Route" as first action after claiming
 
