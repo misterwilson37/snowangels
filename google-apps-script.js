@@ -23,11 +23,11 @@
 // ===========================================
 
 // Version - update this when you deploy a new version
-const SCRIPT_VERSION = '1.14';
+const SCRIPT_VERSION = '1.15';
 
 // Latest app version - update this when you deploy new HTML
 // This tells older app versions that an update is available
-const LATEST_APP_VERSION = '1.14';
+const LATEST_APP_VERSION = '1.15';
 
 // Email notifications - set to true to enable, add email addresses to notify
 const EMAIL_CONFIG = {
